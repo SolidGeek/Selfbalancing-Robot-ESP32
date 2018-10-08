@@ -1,73 +1,82 @@
 #include "I2C.h"
 
-I2C::I2C(uint8_t _deviceAddress)
+I2C::I2C(uint8_t _devAddress)
 {
-	deviceAddress = _deviceAddress;
+	devAddress = _devAddress;
+
+	Wire.begin();
+	Wire.setClock(400000UL); // Set I2C frequency to 400kHz
 }
 
-uint8_t I2C::write(uint8_t address, uint8_t data, bool sendStop)
+uint8_t I2C::write(uint8_t address, uint8_t data)
 {
-	return write(address, &data, 1, sendStop); // Returns 0 on success
+	return write(address, &data, 1); // Returns 0 on success
 }
 
-uint8_t I2C::write(uint8_t address, uint8_t *data, uint8_t length, bool sendStop)
+uint8_t I2C::write(uint8_t address, uint8_t *data, uint8_t length)
 {
+
+	uint8_t response;
+
 	// Begin communication on the I2C address
-	Wire.beginTransmission(deviceAddress);	
+	Wire.beginTransmission(devAddress);	
 
-	// First write the address to update
+	// First write (select) the register to update
 	Wire.write(address);
+	response = Wire.endTransmission();
+
+	// If response isn't 0, then return the error
+	if(response){
+		return response;  
+	}
+
 	// Next write the data
+	Wire.beginTransmission(devAddress);
 	Wire.write(data, length);
 
 	// End communication, returns 0 on success
-	uint8_t response = Wire.endTransmission(sendStop);
+	response = Wire.endTransmission();
 
 	return response;
+
 }
 
-uint8_t I2C::read8(uint8_t address)
-{
-    uint8_t value;
+uint8_t I2C::read(uint8_t address){
 
-    Wire.beginTransmission(deviceAddress);
-    Wire.write(address);
- 
-    Wire.endTransmission();
+	uint8_t data;
+	read(address, &data, 1);
 
-    Wire.beginTransmission(deviceAddress);
-    Wire.requestFrom(deviceAddress, 1);
-    
-    while(!Wire.available()) {};
-    
-    value = Wire.read();
-    Wire.endTransmission();
-
-    return value;
+	return data;
 }
 
 uint8_t I2C::read(uint8_t address, uint8_t *data, uint8_t nbytes)
 {
 	uint32_t timeOutTimer;
+	uint8_t response;
 
-	Wire.beginTransmission(deviceAddress);
+	// Begin communication on the I2C address
+	Wire.beginTransmission(devAddress);
+
+	// First write (select) the register to read from
 	Wire.write(address);
-  uint8_t response = Wire.endTransmission(); 
+	response = Wire.endTransmission(); 
 
-  if (response) {
-    Serial.println("End transmission failed");
-    return response;
-  }
+	if (response) {
+		return response;
+	}
 
-
-  Wire.beginTransmission(deviceAddress);
-	Wire.requestFrom(deviceAddress, nbytes, (uint8_t)true); // Send a repeated start and then release the bus after reading
+	// Read n bytes from the I2C
+	Wire.beginTransmission(devAddress);
+	Wire.requestFrom(devAddress, nbytes, true); 
 
 	for (uint8_t i = 0; i < nbytes; i++)
 	{
 		if (Wire.available())
+		{
 			data[i] = Wire.read();
-		else {
+		}
+		else
+		{
 			timeOutTimer = micros();
 
 			while (((micros() - timeOutTimer) < timeout) && !Wire.available());
@@ -82,4 +91,21 @@ uint8_t I2C::read(uint8_t address, uint8_t *data, uint8_t nbytes)
 	}
 
 	return 0; // Success
+}
+
+
+void I2C::writeBit(uint8_t address, uint8_t position, bool state)
+{
+    uint8_t value;
+    value = read(address);
+
+    if (state)
+    {
+        value |= (1 << position);
+    } else 
+    {
+        value &= ~(1 << position);
+    }
+
+    write(address, value);
 }
