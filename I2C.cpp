@@ -1,48 +1,40 @@
 #include "I2C.h"
 
-I2C::I2C(uint8_t _devAddress)
+I2C::I2C()
 {
-	devAddress = _devAddress;
-
 	Wire.begin();
 	Wire.setClock(400000UL); // Set I2C frequency to 400kHz
 }
 
+void I2C::setAdress( uint8_t address ){
+	devAddress = address;
+}
+
 uint8_t I2C::write(uint8_t address, uint8_t data)
 {
-	return write(address, &data, 1); // Returns 0 on success
+	uint8_t response = write(address, &data, 1); // Returns 0 on success
+  
+  return response;
 }
 
 uint8_t I2C::write(uint8_t address, uint8_t *data, uint8_t length)
 {
-
-	uint8_t response;
 
 	// Begin communication on the I2C address
 	Wire.beginTransmission(devAddress);	
 
 	// First write (select) the register to update
 	Wire.write(address);
-	response = Wire.endTransmission();
-
-	// If response isn't 0, then return the error
-	if(response){
-		return response;  
-	}
 
 	// Next write the data
-	Wire.beginTransmission(devAddress);
 	Wire.write(data, length);
 
 	// End communication, returns 0 on success
-	response = Wire.endTransmission();
-
-	return response;
+	return Wire.endTransmission();
 
 }
 
 uint8_t I2C::read(uint8_t address){
-
 	uint8_t data;
 	read(address, &data, 1);
 
@@ -94,18 +86,18 @@ uint8_t I2C::read(uint8_t address, uint8_t *data, uint8_t nbytes)
 }
 
 
-void I2C::writeBit(uint8_t address, uint8_t position, bool state)
+uint8_t I2C::writeBit(uint8_t address, uint8_t pos, bool state)
 {
     uint8_t value;
     value = read(address);
 
     if (state)
     {
-        value |= (1 << position);
+        value |= (1 << pos);
     } else 
     {
-        value &= ~(1 << position);
+        value &= ~(1 << pos);
     }
 
-    write(address, value);
+    return write(address, value);
 }
