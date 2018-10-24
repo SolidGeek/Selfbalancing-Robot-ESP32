@@ -1,6 +1,9 @@
 #include <Arduino.h>
 #include "I2C.h"
 
+#define MPU6050_REG_ACCEL_XOFFS_H 0x06
+#define MPU6050_REG_ACCEL_XOFFS_L 0x07
+
 #define MPU6050_ADRESS            0x68
 #define MPU6050_REG_WHO_AM_I      0x75
 #define MPU6050_REG_ACCEL         0x3B
@@ -43,15 +46,22 @@ class MPU6050
   	void setClockSource( uint8_t source );
   
   	void setSleepEnabled( bool state );
+
+    void setAccelOffsetX( int16_t offset );
   
     void getData();
   
+    Vector rawGyro;
+    Vector rawAccel;
+
     Vector gyro;
     Vector accel;
   
   private:
   
   	I2C port;
+
+    int EMA( int newSample, int oldSample, float alpha );
   
     uint8_t buff[14];
  

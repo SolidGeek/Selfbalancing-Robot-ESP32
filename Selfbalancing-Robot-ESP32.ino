@@ -1,32 +1,62 @@
 #include "MPU6050.h"
+#include <math.h> 
 
 MPU6050 MPU;
 
+float sensitivity = 16.4;
+double compAngle;
+double gyroAngle;
+uint32_t timer;
+double alfa = 0.92;
+
 void setup(){
-  
   Serial.begin(9600);
   if(MPU.begin()){
     Serial.println("Ready");  
   }
-
 }
-
-float output = 0;
-float angle = 0;
 
 void loop(){
 
+  // Get data from MPU6050 
   MPU.getData();
 
-  output += (MPU.accel.x - output) * 0.5;
+  // Calculate delta time
+  double dt = (double)(micros() - timer) / 1000000.0; 
+  timer = micros();
 
-  angle = (output/16384.0)*90.0;
+  double accelAngle = accelAngleAtan( MPU.rawAccel.y, MPU.rawAccel.z );
+
+  double gyroRate = ( ( MPU.rawGyro.x / sensitivity ));
+
+  gyroAngle += gyroRate * dt;
+
+  compAngle = alfa * (compAngle + gyroRate * dt) + (1.0 - alfa) * accelAngle;
+
+  Serial.print(accelAngle);
+  Serial.print(',');
+  Serial.print(gyroAngle);
+  Serial.print(',');
+  Serial.println(compAngle);
+
+  delayMicroseconds(2);
+
+}
+
+double accelAngleAtan( int ay, int az ){
+
+  if(az <= 0 && ay >= 0){
+    return 90.0;  
+  }
+
+  if(az <= 0 && ay <= 0){
+    return -90.0;  
+  }
   
+  double angle = atan( double((float)ay/(float)az) );
 
-  Serial.println(angle);
-
-  delay(2);
-
+  return angle * 57.2957795;
+  
 }
 
 

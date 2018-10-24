@@ -19,6 +19,8 @@ bool MPU6050::begin(){
   setRange( MPU6050_RANGE_2G );
   setScale( MPU6050_SCALE_2000DPS );
 
+  // setAccelOffsetX(37);
+
   return true;
 
 }
@@ -66,19 +68,46 @@ void MPU6050::setSleepEnabled(bool state)
     port.writeBit(MPU6050_REG_PWR_MGMT_1, 6, state);
 }
 
+void MPU6050::setAccelOffsetX(int16_t offset)
+{
+
+  uint8_t data[2];
+
+  data[0] = (uint8_t)offset >> 8;
+  data[1] = (uint8_t)offset;
+
+  port.write(MPU6050_REG_ACCEL_XOFFS_H, data, 2);
+  
+}
+
+
 void MPU6050::getData(){
 
   // Read the next 14 registers starting from MPU6050_REG_ACCEL
   port.read(MPU6050_REG_ACCEL, buff, 14);
 
-  accel.x = (int16_t)((buff[0] << 8) | buff[1]); // X
-  accel.y = (int16_t)((buff[2] << 8) | buff[3]); // Y
-  accel.z = (int16_t)((buff[4] << 8) | buff[5]); // Z
+  rawAccel.x = (int16_t)((buff[0] << 8) | buff[1]); // X
+  rawAccel.y = (int16_t)((buff[2] << 8) | buff[3]); // Y
+  rawAccel.z = (int16_t)((buff[4] << 8) | buff[5]); // Z
 
   // tempRaw = (int16_t)((buff[6] << 8) | buff[7]); // Temperatur
  
-  gyro.x = (int16_t)((buff[8] << 8) | buff[9]);    // X
-  gyro.y = (int16_t)((buff[10] << 8) | buff[11]);  // Y
-  gyro.z = (int16_t)((buff[12] << 8) | buff[13]);; // Z
-  
+  rawGyro.x = (int16_t)((buff[8] << 8) | buff[9]);    // X
+  rawGyro.y = (int16_t)((buff[10] << 8) | buff[11]);  // Y
+  rawGyro.z = (int16_t)((buff[12] << 8) | buff[13]);; // Z
+
+  // Filtering 
+
+  accel.x = EMA( rawAccel.x, accel.x, 0.1);
+  accel.y = EMA( rawAccel.y, accel.y, 0.1);
+  accel.z = EMA( rawAccel.z, accel.z, 0.1);
+
+  gyro.x = EMA( rawGyro.x, gyro.x, 0.1);
+  gyro.y = EMA( rawGyro.y, gyro.y, 0.1);
+  gyro.z = EMA( rawGyro.z, gyro.z, 0.1);
+}
+
+
+int MPU6050::EMA( int newSample, int oldSample, float alpha ){
+  return (int)((alpha * (float)newSample) + (1.0-alpha) * (float)oldSample);  
 }
