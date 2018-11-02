@@ -7,13 +7,28 @@ float sensitivity = 16.4;
 double compAngle;
 double gyroAngle;
 uint32_t timer;
-double alfa = 0.92;
+double alfa = 0.96;
 
 void setup(){
+  
   Serial.begin(9600);
+  
   if(MPU.begin()){
     Serial.println("Ready");  
   }
+
+  MPU.calibrate();
+
+  Serial.println( "Calibration done, offsets found:" );
+  
+  Serial.println( "ax:" + (String)MPU.ax_offset );
+  Serial.println( "aY:" + (String)MPU.ay_offset );
+  Serial.println( "aZ:" + (String)MPU.az_offset );
+  
+  Serial.println( "gX:" + (String)MPU.gx_offset );
+  Serial.println( "gY:" + (String)MPU.gy_offset );
+  Serial.println( "gZ:" + (String)MPU.gz_offset );
+  
 }
 
 void loop(){
@@ -38,7 +53,7 @@ void loop(){
   Serial.print(gyroAngle);
   Serial.print(',');
   Serial.println(compAngle);
-
+  
   delayMicroseconds(2);
 
 }
