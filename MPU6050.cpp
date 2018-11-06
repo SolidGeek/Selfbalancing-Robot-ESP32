@@ -9,7 +9,7 @@ bool MPU6050::begin(){
 	delay(100);
 
 	if (port.read(MPU6050_REG_WHO_AM_I) != MPU6050_ADRESS){
-	return false;
+		return false;
 	}
 
 	setSleepEnabled( false ); // Turn of sleep mode before any other registers is configured!!!

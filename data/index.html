@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<title>BeerBot v1.0</title>
+		<script src='virtualjoystick.js'></script>
+	</head>
+
+	<body>
+
+		<h1>Stats</h1>
+
+		<div id="stats"></div>
+
+
+		<div id="joystick" style="width: 300px; height: 300px; background-color: #ddd; border-radius: 5px "></div>
+
+		<script type="text/javascript">
+
+			function loadContent(){
+
+				var xhttp = new XMLHttpRequest();
+				xhttp.onreadystatechange = function() {
+					if (this.readyState == 4 && this.status == 200) {
+						document.getElementById("stats").innerHTML = this.responseText;
+					}
+				};
+				xhttp.open("GET", "data.html", true);
+				xhttp.send();
+
+			};
+
+			setInterval(function() {
+				loadContent();
+			}, 100);
+
+
+			var joystick = new VirtualJoystick({
+				mouseSupport: true,
+				stationaryBase: true,
+				baseX: 150,
+				baseY: 150,
+				limitStickTravel: true,
+				stickRadius: 50,
+
+				container: document.getElementById('joystick'),
+		
+			});
+		</script>
+
+	</body>
+</html>
