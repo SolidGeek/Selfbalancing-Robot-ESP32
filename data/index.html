@@ -1,8 +1,12 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 	<head>
-		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
 		<title>BeerBot v1.0</title>
+
+		<link rel="stylesheet" type="text/css" href="style.css">
 		<script src='virtualjoystick.js'></script>
 	</head>
 
@@ -12,17 +16,30 @@
 
 		<div id="stats"></div>
 
+		<div class="slidecontainer">
+			<input type="range" min="-90" max="90" value="0" class="slider" id="angle">
+		</div>
 
-		<div id="joystick" style="width: 300px; height: 300px; background-color: #ddd; border-radius: 5px "></div>
+		<div id="joystick"></div>
 
 		<script type="text/javascript">
 
 			function loadContent(){
 
+				var parser = new DOMParser();
+
 				var xhttp = new XMLHttpRequest();
 				xhttp.onreadystatechange = function() {
 					if (this.readyState == 4 && this.status == 200) {
-						document.getElementById("stats").innerHTML = this.responseText;
+
+						var data = parser.parseFromString(this.responseText, "text/xml");
+						var angle = data.getElementById("angle-data").innerHTML;
+
+
+						console.log(angle);
+						
+						document.getElementById("angle").value = angle;
+
 					}
 				};
 				xhttp.open("GET", "data.html", true);

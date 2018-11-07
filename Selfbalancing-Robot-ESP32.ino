@@ -49,12 +49,19 @@ void setup(){
     request->send(SPIFFS, "/index.html", "text/html");
   });
 
+  // Tell the EPS how to handle the ajax call
   server.on("/data.html", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/data.html", "text/html", false, processor);
   });
 
+  // Tell the ESP how to include the joystick script
   server.on("/virtualjoystick.js", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/virtualjoystick.js", "text/javascript");
+  });
+
+  // Tell the ESP32 how to include style
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/style.css", "text/css");
   });
  
   server.begin();
