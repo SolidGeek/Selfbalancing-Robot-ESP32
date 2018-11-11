@@ -7,6 +7,7 @@
 MPU6050 MPU;
 
 AsyncWebServer server(80);
+AsyncWebSocket ws("/data");
 
 /* Login oplysninger til AP */
 const char *ssid = "BeerBot v1.0";
@@ -18,6 +19,23 @@ double gyroAngle;
 uint32_t timer;
 double alfa = 0.96;
 
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
+  if(type == WS_EVT_CONNECT){
+
+    Serial.println("Client connected");
+    
+  }else if(type == WS_EVT_DATA){
+ 
+ 
+    for(int i=0; i < len; i++) {
+          Serial.print((char) data[i]);
+    }
+
+    Serial.println();
+ 
+    client->text( String(compAngle) );
+  }
+}
 
 String processor(const String& var)
 { 
@@ -55,14 +73,17 @@ void setup(){
   });
 
   // Tell the ESP how to include the joystick script
-  server.on("/virtualjoystick.js", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/virtualjoystick.js", "text/javascript");
+  server.on("/nipplejs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/nipplejs.min.js", "text/javascript");
   });
 
   // Tell the ESP32 how to include style
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
   });
+
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
  
   server.begin();
 

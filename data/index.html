@@ -7,62 +7,204 @@
 		<title>BeerBot v1.0</title>
 
 		<link rel="stylesheet" type="text/css" href="style.css">
-		<script src='virtualjoystick.js'></script>
+		<script src='nipplejs.min.js'></script>
+		<script src='gauge.min.js'></script>
 	</head>
 
 	<body>
+		<div id="app">
+			<div class="container">
+				<div id="topbar">
+					<div class="content">
+					
+						<h1 id="title">BeerBot</h1>
+						<span>v1.0</span>
+					</div>
+				</div>
+			</div>
+			
+			<div class="container">
 
-		<h1>Stats</h1>
+				<span id="angle-value" class="content"></span>
+				<canvas id="angle"></canvas>
 
-		<div id="stats"></div>
+				<br>
 
-		<div class="slidecontainer">
-			<input type="range" min="-90" max="90" value="0" class="slider" id="angle">
+				<div class="content">
+					<div id="joystick">
+
+						<span id="left-value"></span>
+						<span id="right-value"></span>
+							
+						<span id="guide-text">Click here to control</span>
+
+					</div>
+				</div>
+
+				<div class="content">
+
+					<h3>Telemetry</h3>
+					<table>
+						<tr>
+							<th>Angle:</th>
+							<td>0 degress</td>
+						</tr>
+
+						<tr>
+							<th>Voltage:</th>
+							<td>0 V</td>
+						</tr>
+
+						<tr>
+							<th>Weight:</th>
+							<td>0.12 kg</td>
+						</tr>
+					</table>
+				</div>
+			</div>
 		</div>
 
-		<div id="joystick"></div>
-
 		<script type="text/javascript">
+		
+			var x = 0;	var y = 0;
+			var sX = 0; var sY = 0;
+			var V = 0; 	var H = 0;
 
-			function loadContent(){
+			var ws = new WebSocket("ws://192.168.4.1/data");
 
-				var parser = new DOMParser();
+			function calculateSpeeds(){
+				// Første kvadrant
+				if(x > 0 && y > 0){
+					V = Math.sqrt(x*x + y*y);
+					H = V * (y*y - x*x)/( y*y + x*x );
+				}
+				// Anden kvadrant
+				if(x < 0 && y > 0){
+					H = Math.sqrt(x*x + y*y);
+					V = H * (y*y - x*x)/( y*y + x*x );
+				}
+				// Tredje kvadrant
+				if(x < 0 && y < 0){
+					V = -Math.sqrt(x*x + y*y);
+					H = V * (y*y - x*x)/( y*y + x*x );
+				}
+				// Fjerde kvadrant
+				if(x > 0 && y < 0){
+				 	H = -Math.sqrt(x*x + y*y);
+					V = H * (y*y - x*x)/( y*y + x*x );
+				}
+				if( x == 0 && y > 0){
+					V = Math.sqrt(x*x + y*y)
+					H = V;
+				}
+				if( x == 0 && y < 0){
+					V = -Math.sqrt(x*x + y*y)
+					H = V;
+				}
+				if( y == 0 && x > 0){
+					V = Math.sqrt(x*x + y*y)
+					H = -V;
+				}
+				if( y == 0 && x < 0){
+					H = Math.sqrt(x*x + y*y)
+					V = -H;
+				}
 
-				var xhttp = new XMLHttpRequest();
-				xhttp.onreadystatechange = function() {
-					if (this.readyState == 4 && this.status == 200) {
+				H = Math.round(H * 100) / 100;
+				V = Math.round(V * 100) / 100;
 
-						var data = parser.parseFromString(this.responseText, "text/xml");
-						var angle = data.getElementById("angle-data").innerHTML;
-
-
-						console.log(angle);
-						
-						document.getElementById("angle").value = angle;
-
-					}
-				};
-				xhttp.open("GET", "data.html", true);
-				xhttp.send();
-
-			};
+				document.getElementById('left-value').innerHTML = V;
+				document.getElementById('right-value').innerHTML = H;
+			}
 
 			setInterval(function() {
-				loadContent();
-			}, 100);
+
+				if(ws.readyState == 1){
+					ws.send(V + ":" + H);
+				}
+
+				gauge.set(Math.floor(Math.random() * Math.floor(90))); // set actual value
+
+			}, 500);
 
 
-			var joystick = new VirtualJoystick({
-				mouseSupport: true,
-				stationaryBase: true,
-				baseX: 150,
-				baseY: 150,
-				limitStickTravel: true,
-				stickRadius: 50,
-
-				container: document.getElementById('joystick'),
-		
+			var manager = nipplejs.create({
+				zone: document.getElementById('joystick'),
+				catchDistance: 100,
+				color: '#0070ff',
+				size: 200
 			});
+
+			manager.on('added', function (event, nipple) {
+
+				document.getElementById('guide-text').style.display = "none";
+				document.getElementById('left-value').style.display = "block";
+				document.getElementById('right-value').style.display = "block";
+
+				sX = nipple.position.x;
+				sY = nipple.position.y;
+
+			}).on('removed', function (event, nipple) {
+
+				document.getElementById('guide-text').style.display = "block";
+				document.getElementById('left-value').style.display = "none";
+				document.getElementById('right-value').style.display = "none";
+
+			}).on('move', function (event, nipple) {
+
+				x = nipple.position.x - sX;
+				y = -(nipple.position.y - sY);
+
+				calculateSpeeds();
+
+			}).on('end', function (event, nipple) {
+
+				H = 0;
+				V = 0;
+
+			});
+			
+			ws.onmessage = function (event) {
+				document.getElementById("angle").value = event.data;
+			};
+
+
+			var opts = {
+				angle: 0, // The span of the gauge arc
+				lineWidth: 0.2, // The line thickness
+				radiusScale: 0.8, // Relative radius
+
+				pointer: {
+					length: 0.6, // // Relative to gauge radius
+					strokeWidth: 0.06, // The thickness
+					color: '#3c3c3c' // Fill color
+				},
+
+				limitMax: false,     // If false, max value increases automatically if value > maxValue
+				limitMin: false,     // If true, the min value of the gauge will be fixed
+
+				highDpiSupport: true,     // High resolution support
+				staticZones: [
+				   {strokeStyle: "#F03E3E", min: -90, max: -80}, // Red from 100 to 130
+				   {strokeStyle: "#FFDD00", min: -80, max: -30}, // Yellow
+				   {strokeStyle: "#30B32D", min: -30, max: 30}, // Green
+				   {strokeStyle: "#FFDD00", min: 30, max: 80}, // Yellow
+				   {strokeStyle: "#F03E3E", min: 80, max: 90}  // Red
+				],
+			};
+
+			var target = document.getElementById('angle');
+			var gauge = new Gauge(target).setOptions(opts); 
+
+			gauge.setTextField(document.getElementById("angle-value"));
+
+			gauge.maxValue = 90;
+			gauge.minValue = -90; 
+
+			gauge.set(0); // set actual value
+
+
+
 		</script>
 
 	</body>
