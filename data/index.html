@@ -25,12 +25,13 @@
 			
 			<div class="container">
 
-				<span id="angle-value" class="content"></span>
-				<canvas id="angle"></canvas>
-
-				<br>
-
 				<div class="content">
+					<span id="angle-value"></span>
+					<canvas id="angle"></canvas>
+
+					<br>
+
+				
 					<div id="joystick">
 
 						<span id="left-value"></span>
@@ -39,6 +40,7 @@
 						<span id="guide-text">Click here to control</span>
 
 					</div>
+					
 				</div>
 
 				<div class="content">
@@ -185,11 +187,11 @@
 
 				highDpiSupport: true,     // High resolution support
 				staticZones: [
-				   {strokeStyle: "#F03E3E", min: -90, max: -80}, // Red from 100 to 130
-				   {strokeStyle: "#FFDD00", min: -80, max: -30}, // Yellow
+				   {strokeStyle: "#F03E3E", min: -90, max: -60}, // Red from 100 to 130
+				   {strokeStyle: "#FFDD00", min: -60, max: -30}, // Yellow
 				   {strokeStyle: "#30B32D", min: -30, max: 30}, // Green
-				   {strokeStyle: "#FFDD00", min: 30, max: 80}, // Yellow
-				   {strokeStyle: "#F03E3E", min: 80, max: 90}  // Red
+				   {strokeStyle: "#FFDD00", min: 30, max: 60}, // Yellow
+				   {strokeStyle: "#F03E3E", min: 60, max: 90}  // Red
 				],
 			};
 

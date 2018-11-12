@@ -4,142 +4,117 @@
 #include "MPU6050.h"
 #include <math.h> 
 
+// Initiation of MPU object
 MPU6050 MPU;
 
+// Initiation of WebServer and WebSocket object
 AsyncWebServer server(80);
-AsyncWebSocket ws("/data");
+AsyncWebSocket websocket("/data");
 
-/* Login oplysninger til AP */
-const char *ssid = "BeerBot v1.0";
-const char *password = "12345679";
+// Login details for the access point
+const char * ssid = "BeerBot v1.0";
+const char * password = "12345679";
 
-float sensitivity = 16.4;
-double compAngle;
-double gyroAngle;
-uint32_t timer;
+// Variables for angle estimation
+double angle = 0;
+double sensitivity = 16.4;
 double alfa = 0.96;
+double accelAngle = 0, gyroAngle = 0;
+uint32_t timer;
 
+// Function for an incoming websocket connection
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
-
     Serial.println("Client connected");
-    
   }else if(type == WS_EVT_DATA){
- 
- 
+
     for(int i=0; i < len; i++) {
           Serial.print((char) data[i]);
     }
 
-    Serial.println();
- 
-    client->text( String(compAngle) );
+    Serial.println(); 
+    client->text( String(angle) );
   }
-}
-
-String processor(const String& var)
-{ 
-  if(var == "ANGLE"){
-    return String(compAngle);
-  }
- 
-  return String();
 }
 
 void setup(){
   
   Serial.begin(9600);
 
+  // Initiate file server 
   if(!SPIFFS.begin()){
      Serial.println("An Error has occurred while mounting SPIFFS");
      return;
   }
 
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_AP);
-
+  // Initiate access point for WiFi control
   WiFi.softAP(ssid, password);
- 
-  Serial.print( "IP address: " );
-  Serial.println( WiFi.softAPIP() );
 
+  // Tell the ESP how to handle specific incoming HTTP requests
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/index.html", "text/html");
   });
-
-  // Tell the EPS how to handle the ajax call
-  server.on("/data.html", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(SPIFFS, "/data.html", "text/html", false, processor);
-  });
-
-  // Tell the ESP how to include the joystick script
   server.on("/nipplejs.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/nipplejs.min.js", "text/javascript");
   });
-
-  // Tell the ESP32 how to include style
+  server.on("/gauge.min.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/gauge.min.js", "text/javascript");
+  });
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/style.css", "text/css");
   });
 
-  ws.onEvent(onWsEvent);
-  server.addHandler(&ws);
- 
+  // Tell the WebSocket to execute the function onWsEvent() on each WebSocket event
+  websocket.onEvent(onWsEvent);
+  server.addHandler(&websocket);
+  
+  // Begin the WebServer
   server.begin();
 
-  Serial.println("Selfbalancing robot");
-  
+  // Initiate the MPU connection
   if(MPU.begin()){
+
     Serial.println("Ready");  
   
+    // Calibrate the accel and gyro
     MPU.calibrate();
-  
-    Serial.println( "Calibration done, offsets found:" );
-    
-    Serial.println( "ax:" + (String)MPU.ax_offset );
-    Serial.println( "aY:" + (String)MPU.ay_offset );
-    Serial.println( "aZ:" + (String)MPU.az_offset );
-    
-    Serial.println( "gX:" + (String)MPU.gx_offset );
-    Serial.println( "gY:" + (String)MPU.gy_offset );
-    Serial.println( "gZ:" + (String)MPU.gz_offset );
+    Serial.println( "Calibration done" );
       
   }else{
     Serial.println("Couldn't reach MPU");
   }
-
-  
 }
 
 void loop(){
 
-  // Get data from MPU6050 
-  MPU.getData();
+  estimateAngle();
 
-  // Calculate delta time
-  double dt = (double)(micros() - timer) / 1000000.0; 
-  timer = micros();
-
-  double accelAngle = accelAngleAtan( MPU.rawAccel.y, MPU.rawAccel.z );
-
-  double gyroRate = ( ( MPU.rawGyro.x / sensitivity ));
-
-  gyroAngle += gyroRate * dt;
-
-  compAngle = alfa * (compAngle + gyroRate * dt) + (1.0 - alfa) * accelAngle;
-
-  /*Serial.print(accelAngle);
-  Serial.print(',');
-  Serial.print(gyroAngle);
-  Serial.print(',');
-  Serial.println(compAngle);*/
-  
   delayMicroseconds(2);
 
 }
 
-double accelAngleAtan( int ay, int az ){
+void estimateAngle(){
 
+  // Get accel and gyro data from MPU6050 
+  MPU.getData();
+
+  // Calculate delta time in seconds (dividing by 10e6)
+  double dt = (double)(micros() - timer) / 1000000.0; 
+  timer = micros();
+
+  // Estimate angle from accelerometer values with geometry
+  accelAngle = calculateAccelAngle( MPU.rawAccel.y, MPU.rawAccel.z );
+
+  // Estimate angle from the integration of angular velocity (gyro value) over time
+  gyroAngle += ( MPU.rawGyro.x / sensitivity ) * dt;
+
+  angle = alfa * (angle + (MPU.rawGyro.x / sensitivity) * dt) + (1.0 - alfa) * accelAngle;
+
+}
+
+double calculateAccelAngle( int ay, int az ){
+
+  // Limit the angle to 90 and -90 degress
   if(az <= 0 && ay >= 0){
     return 90.0;  
   }
@@ -148,10 +123,7 @@ double accelAngleAtan( int ay, int az ){
     return -90.0;  
   }
   
-  double angle = atan( double((float)ay/(float)az) );
-
-  return angle * 57.2957795;
+  // Calculate argtan and convert to degress by multipliing by 57.296 (180/pi)
+  return atan( (double)ay / (double)az ) * 57.2957795;
   
 }
-
-
