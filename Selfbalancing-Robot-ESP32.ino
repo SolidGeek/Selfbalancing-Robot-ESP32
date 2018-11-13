@@ -3,6 +3,10 @@
 #include "ESPAsyncWebServer.h"
 #include "MPU6050.h"
 #include <math.h> 
+#include <HardwareSerial.h>
+
+HardwareSerial LeftSerial(1);
+HardwareSerial RightSerial(2);
 
 // Initiation of MPU object
 MPU6050 MPU;
@@ -22,17 +26,35 @@ double alfa = 0.96;
 double accelAngle = 0, gyroAngle = 0;
 uint32_t timer;
 
+char leftSpeed[10];
+char rightSpeed[10];
+bool parked = false;
+unsigned long lastSpeedSet = 0;
+
+unsigned long lastPacket = 0;
+
 // Function for an incoming websocket connection
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
     Serial.println("Client connected");
   }else if(type == WS_EVT_DATA){
 
-    for(int i=0; i < len; i++) {
-          Serial.print((char) data[i]);
-    }
+    // Begin parse data received
+    lastPacket = millis();
 
-    Serial.println(); 
+    char * charArray = (char*)data;
+      
+    char * index; // this is used by strtok() as an index
+
+    index = strtok(charArray,":"); 
+    strcpy(leftSpeed, index);
+
+    index = strtok(NULL, ":"); 
+    strcpy(rightSpeed, index);
+    
+    index = strtok(NULL, ":");
+    parked = atoi(index); 
+    
     client->text( String(angle) );
   }
 }
@@ -40,6 +62,9 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
 void setup(){
   
   Serial.begin(9600);
+
+  RightSerial.begin(115200, SERIAL_8N1, 16, 17);   // RX: 16, TX: 17
+  LeftSerial.begin(115200, SERIAL_8N1, 32, 33);  // RX: 32, TX: 33
 
   // Initiate file server 
   if(!SPIFFS.begin()){
@@ -89,8 +114,29 @@ void loop(){
 
   estimateAngle();
 
-  delayMicroseconds(2);
+  // Timeout 
+  if(millis() - lastPacket > 100){
+    strcpy(leftSpeed, "0");
+    strcpy(rightSpeed, "0");
+  }
 
+  setSpeeds();
+
+  delayMicroseconds(5);
+
+}
+
+void setSpeeds(){
+  if( millis() - lastSpeedSet > 10 ){
+    /* Print Speeds by UART to the uSteppers */
+    RightSerial.print(rightSpeed);
+    RightSerial.write('\0');
+  
+    LeftSerial.print(leftSpeed);
+    LeftSerial.write('\0');
+
+    lastSpeedSet = millis();
+  }
 }
 
 void estimateAngle(){

@@ -121,13 +121,13 @@
 
 			setInterval(function() {
 
+				var parked = 0;
+
 				if(ws.readyState == 1){
-					ws.send(V + ":" + H);
+					ws.send(V + ":" + H + ":" + parked);
 				}
 
-				gauge.set(Math.floor(Math.random() * Math.floor(90))); // set actual value
-
-			}, 500);
+			}, 50);
 
 
 			var manager = nipplejs.create({
@@ -167,7 +167,8 @@
 			});
 			
 			ws.onmessage = function (event) {
-				document.getElementById("angle").value = event.data;
+				console.log(event.data);
+				gauge.set(event.data);
 			};
 
 
