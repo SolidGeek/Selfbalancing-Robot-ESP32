@@ -23,7 +23,7 @@ const char * password = "12345679";
 /* Variables for angle estimation */
 double currentAngle = 0;
 double sensitivity = 16.4;
-double alfa = 0.92;
+double alfa = 0.98;
 double accelAngle = 0, gyroAngle = 0;
 uint32_t timer;
 
@@ -150,6 +150,8 @@ void loop(){
   {
     estimateAngle();
     sample = micros();
+
+    Serial.println(currentAngle);
   }
 
   if(micros() - D1 >= 20000)    // 50 Hz
@@ -192,9 +194,9 @@ void setSpeeds(){
     snprintf(rightSpeed, 10, "%.2f", rightVelocity);
     snprintf(leftSpeed, 10, "%.2f", leftVelocity);
 
-    Serial.print(rightVelocity);
+    /*Serial.print(rightVelocity);
     Serial.print('\t');
-    Serial.println(leftVelocity);
+    Serial.println(leftVelocity);*/
     /*Serial.print('\t');
     Serial.print(currentAngle);
     Serial.print('\t');
@@ -247,7 +249,7 @@ void translationalController( float leftVel, float rightVel, float setpoint ){
   }
 }
 
-#define angleKp -2.5f
+#define angleKp -3.5f
 #define angleKi -0.0f
 #define angleKd -0.0f
 
@@ -299,12 +301,12 @@ void estimateAngle(){
   timer = micros();
 
   // Estimate angle from accelerometer values with geometry
-  accelAngle = calculateAccelAngle( MPU.rawAccel.x, MPU.rawAccel.z );
+  accelAngle = calculateAccelAngle( MPU.accel.x, MPU.accel.z );
 
   // Estimate angle from the integration of angular velocity (gyro value) over time
-  gyroAngle += ( MPU.rawGyro.y / sensitivity ) * dt;
+  gyroAngle += ( MPU.gyro.y / sensitivity ) * dt;
 
-  currentAngle = alfa * (currentAngle + (MPU.rawGyro.y / sensitivity) * dt) + (1.0 - alfa) * accelAngle;
+  currentAngle = alfa * (currentAngle + (MPU.gyro.y / sensitivity) * dt) + (1.0 - alfa) * accelAngle;
 
 }
 
