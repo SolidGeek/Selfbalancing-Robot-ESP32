@@ -264,8 +264,24 @@ void MPU6050::calibrate( void ){
 	
 		if (ready == 6) break;
 	}
+ 
+  offsets.ax = ax_offset;
+  offsets.ay = ay_offset;
+  offsets.az = az_offset;
+  offsets.gx = gx_offset;
+  offsets.gy = gy_offset;
+  offsets.gz = gz_offset;
+ 
 }
 
+void MPU6050::loadOffsets( void ){
+  this->setAccelOffsetX( offsets.ax );
+  this->setAccelOffsetY( offsets.ay );
+  this->setAccelOffsetZ( offsets.az );
+  this->setGyroOffsetX( offsets.gx );
+  this->setGyroOffsetY( offsets.gy );
+  this->setGyroOffsetZ( offsets.gz );
+}
 
 int MPU6050::EMA( int newSample, int oldSample, float alpha ){
   return (int)((alpha * (float)newSample) + (1.0-alpha) * (float)oldSample);  

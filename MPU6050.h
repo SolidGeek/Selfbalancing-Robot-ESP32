@@ -64,6 +64,7 @@ class MPU6050
 
     int16_t getGyroOffsetX( void );
 
+    void loadOffsets( void );
   
     void getData();
 
@@ -79,6 +80,15 @@ class MPU6050
 
     int16_t ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
     int16_t mean_ax = 0, mean_ay = 0, mean_az = 0, mean_gx = 0, mean_gy = 0, mean_gz = 0;
+
+    struct Offsets{
+      int16_t ax = 0;
+      int16_t ay = 0;
+      int16_t az = 0;
+      int16_t gx = 0;
+      int16_t gy = 0;
+      int16_t gz = 0;
+    } offsets;
   
   private:
   
