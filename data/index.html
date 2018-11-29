@@ -4,75 +4,210 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-		<title>BeerBot v1.0</title>
+		<title>RoboTender v1.0</title>
 
 		<link rel="stylesheet" type="text/css" href="style.css">
 		<script src='nipplejs.min.js'></script>
 		<script src='gauge.min.js'></script>
+		<script src='smoothie.min.js'></script>
 	</head>
 
 	<body>
 		<div id="app">
-			<div class="container">
-				<div id="topbar">
+
+			
+
+			<div id="interface">
+
+				<div class="container">
+					<div id="topbar">
+						<div class="content">
+						
+							<h1 id="title">RoboTender</h1>
+							<span>v1.0</span>
+						</div>
+					</div>
+				</div>
+
+				<div class="container">
+
 					<div class="content">
+						<span id="angle-value"></span>
+						<canvas id="angle"></canvas>
+
+						<canvas id="chart" width="320" height="100"></canvas>
+
+						<br>
+
 					
-						<h1 id="title">BeerBot</h1>
-						<span>v1.0</span>
+						<div id="joystick">
+
+							<span id="left-value"></span>
+							<span id="right-value"></span>
+								
+							<span id="guide-text">Click here to control</span>
+
+						</div>
+						
+					</div>
+
+					<div class="content">
+
+						<h3></h3>
+
+						<h3>Telemetry</h3>
+						<table>
+							<tr>
+								<th>Angle:</th>
+								<td>0 degress</td>
+							</tr>
+
+							<tr>
+								<th>Voltage:</th>
+								<td>0 V</td>
+							</tr>
+
+							<tr>
+								<th>Weight:</th>
+								<td>0.12 kg</td>
+							</tr>
+						</table>
 					</div>
 				</div>
 			</div>
-			
-			<div class="container">
-
-				<div class="content">
-					<span id="angle-value"></span>
-					<canvas id="angle"></canvas>
-
-					<br>
-
-				
-					<div id="joystick">
-
-						<span id="left-value"></span>
-						<span id="right-value"></span>
-							
-						<span id="guide-text">Click here to control</span>
-
-					</div>
+			<div id="config">
+				<div class="container">
+					<div class="content">
+						<h3>Configuration</h3>
 					
+						<h4>Angle controller</h4>
+						<input type="number" name="Kp1" placeholder="Kp" class="input" step="0.01">
+						<input type="number" name="Ki1" placeholder="Ki" class="input" step="0.01">
+						<input type="number" name="Kd1" placeholder="Kd" class="input" step="0.01">
+
+						<canvas id="angleChart" width="320" height="100"></canvas>
+
+						<h4>Velocity controller</h4>
+						<input type="number" name="Kp2" placeholder="Kp" class="input" step="0.01">
+						<input type="number" name="Ki2" placeholder="Ki" class="input" step="0.01">
+						<input type="number" name="Kd2" placeholder="Kd" class="input" step="0.01">
+
+						<canvas id="transChart" width="320" height="100"></canvas>
+
+						<script type="text/javascript">
+							// Angle chart 
+							var angleError = new TimeSeries();
+							var angleIntegral = new TimeSeries();
+							var angleSetpoint = new TimeSeries();
+
+							// Find the canvas
+							var angleCanvas = document.getElementById('angleChart');
+
+							// Create the chart
+							var angleChart = new SmoothieChart({
+								millisPerPixel:50,
+								grid:{
+									fillStyle:'transparent',
+									verticalSections:10,
+									strokeStyle:'#c9c9c9'
+								},
+
+								tooltip:true
+							});
+
+							angleChart.addTimeSeries(angleSetpoint, { strokeStyle: '#ec1a1a' });
+							angleChart.addTimeSeries(angleError, { strokeStyle: '#01799e' });
+							angleChart.addTimeSeries(angleIntegral, { strokeStyle: '#0e9a27' });
+
+							angleChart.streamTo(angleCanvas, 100);
+
+
+							// Translational chart 
+
+							var transError = new TimeSeries();
+							var transIntegral = new TimeSeries();
+							var transSetpoint = new TimeSeries();
+							
+							var transCanvas = document.getElementById('transChart');
+
+							// Create the chart
+							var transChart = new SmoothieChart({
+								millisPerPixel:50,
+								grid:{
+									fillStyle:'transparent',
+									verticalSections:10,
+									strokeStyle:'#c9c9c9'
+								},
+
+								tooltip:true
+							});
+
+							transChart.addTimeSeries(transSetpoint, { strokeStyle: '#ec1a1a' });
+							transChart.addTimeSeries(transError, { strokeStyle: '#01799e' });
+							transChart.addTimeSeries(transIntegral, { strokeStyle: '#0e9a27' });
+
+							transChart.streamTo(transCanvas, 100);
+
+
+							// Main chart 
+							var angle = new TimeSeries();
+							var leftSpeed = new TimeSeries();
+							var rightSpeed = new TimeSeries();
+
+							// Find the canvas
+							var canvas = document.getElementById('chart');
+
+							// Create the chart
+							var chart = new SmoothieChart({
+								millisPerPixel:50,
+								grid:{
+									fillStyle:'transparent',
+									verticalSections:10,
+									strokeStyle:'#c9c9c9'
+								},
+
+								tooltip:true
+							});
+
+							chart.addTimeSeries(angle, { strokeStyle: '#ec1a1a' });
+							chart.addTimeSeries(leftSpeed, { strokeStyle: '#01799e' });
+							chart.addTimeSeries(rightSpeed, { strokeStyle: '#0e9a27' });
+
+							chart.streamTo(canvas, 100);
+						</script>
+
+						<hr>
+
+						<button id="updateconfig">Update config</button>
+					</div>
 				</div>
 
-				<div class="content">
-
-					<h3>Telemetry</h3>
-					<table>
-						<tr>
-							<th>Angle:</th>
-							<td>0 degress</td>
-						</tr>
-
-						<tr>
-							<th>Voltage:</th>
-							<td>0 V</td>
-						</tr>
-
-						<tr>
-							<th>Weight:</th>
-							<td>0.12 kg</td>
-						</tr>
-					</table>
-				</div>
 			</div>
 		</div>
 
 		<script type="text/javascript">
 		
 			var x = 0;	var y = 0;
-			var sX = 0; var sY = 0;
-			var V = 0; 	var H = 0;
+			var offsetX = 0; var offsetY = 0;
+			var Vtrans = 0.0; var Vrot = 0.0;
 
-			var ws = new WebSocket("ws://192.168.4.1/data");
+			// PID for Angle controller
+			var Kp1 = -3.5, Ki1 = -1.0, Kd1 = -0.5;
+
+			// PID for Velocity controller
+			var Kp2 = 0.0, Ki2 = 2.0, Kd2 = 0.5;
+
+
+			// On page loaded set the values in 
+
+			document.getElementsByName('Kp1')[0].value = Kp1;
+			document.getElementsByName('Ki1')[0].value = Ki1;
+			document.getElementsByName('Kd1')[0].value = Kd1;
+			document.getElementsByName('Kp2')[0].value = Kp2;
+			document.getElementsByName('Ki2')[0].value = Ki2;
+			document.getElementsByName('Kd2')[0].value = Kd2;
+
+			var ws = new WebSocket("ws://192.168.4.1/datastream");
 
 			function calculateSpeeds(){
 				// Første kvadrant
@@ -121,14 +256,21 @@
 
 			setInterval(function() {
 
-				var parked = 0;
-
 				if(ws.readyState == 1){
-					ws.send(V + ":" + H + ":" + parked);
+					ws.send("<" + Vtrans + ":" + Vrot + ":" + Kp1 + ":" + Ki1 + ":" + Kd1 + ":" + Kp2 + ":" + Ki2 + ":" + Kd2 + ">");
 				}
 
 			}, 50);
 
+
+			document.getElementById('updateconfig').onclick = function(){
+				Kp1 = document.getElementsByName('Kp1')[0].value;
+				Ki1 = document.getElementsByName('Ki1')[0].value;
+				Kd1 = document.getElementsByName('Kd1')[0].value;
+				Kp2 = document.getElementsByName('Kp2')[0].value;
+				Ki2 = document.getElementsByName('Ki2')[0].value;
+				Kd2 = document.getElementsByName('Kd2')[0].value;
+			};
 
 			var manager = nipplejs.create({
 				zone: document.getElementById('joystick'),
@@ -143,8 +285,8 @@
 				document.getElementById('left-value').style.display = "block";
 				document.getElementById('right-value').style.display = "block";
 
-				sX = nipple.position.x;
-				sY = nipple.position.y;
+				offsetX = nipple.position.x;
+				offsetY = nipple.position.y;
 
 			}).on('removed', function (event, nipple) {
 
@@ -155,7 +297,7 @@
 			}).on('move', function (event, nipple) {
 
 				x = nipple.position.x - sX;
-				y = -(nipple.position.y - sY);
+				y = -(nipple.position.y - offsetY);
 
 				calculateSpeeds();
 
@@ -167,8 +309,25 @@
 			});
 			
 			ws.onmessage = function (event) {
-				console.log(event.data);
-				gauge.set(event.data);
+
+				telemtry = JSON.parse(event.data);
+				console.log(telemtry);
+
+				
+				angleSetpoint.append(Date.now(), telemtry.angleSetpoint);
+				angleError.append(Date.now(), telemtry.angleError);
+				angleIntegral.append(Date.now(), telemtry.angleIntegral);
+
+				transSetpoint.append(Date.now(), telemtry.transSetpoint);
+				transError.append(Date.now(), telemtry.transError);
+				transIntegral.append(Date.now(), telemtry.transIntegral);
+				
+				// gauge.set(telemtry.angle);
+
+				angle.append(Date.now(), telemtry.angle);
+				leftSpeed.append(Date.now(), telemtry.leftSpeed);
+				rightSpeed.append(Date.now(), telemtry.rightSpeed);
+
 			};
 
 

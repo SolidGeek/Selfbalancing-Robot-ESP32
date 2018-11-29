@@ -13,22 +13,18 @@ void setup() {
   Serial.begin(9600);
   Serial1.begin(115200, SERIAL_8N1);
 
-  stepper.setMaxVelocity( 1000 ); // Steps/s
-  stepper.setMaxAcceleration( 200 ); // Steps/s
-  stepper.setCurrent(100);
+  stepper.setMaxVelocity( 2000 ); // Steps/s
+  stepper.setMaxAcceleration( 800 ); // Steps/s
+  stepper.setCurrent(65);
   
   stepper.setup();
 }
-
-unsigned long byteCounter = 0;
-int x = 0;
 
 void loop() {
 
   if( Serial1.available() ){
 
     char c = Serial1.read();
-    byteCounter++;
 
     if( c == '\n' ){
       buff[index++] = '\0';
@@ -53,7 +49,7 @@ void loop() {
   
   if(newSpeed){
 
-    Serial.println( perSpeed );
+    // Serial.println( perSpeed );
     stepper.setRPM( perSpeed  );
     
     newSpeed = false;  
