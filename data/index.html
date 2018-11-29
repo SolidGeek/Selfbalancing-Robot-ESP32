@@ -39,14 +39,7 @@
 
 						<br>
 
-					
 						<div id="joystick">
-
-							<span id="left-value"></span>
-							<span id="right-value"></span>
-								
-							<span id="guide-text">Click here to control</span>
-
 						</div>
 						
 					</div>
@@ -93,89 +86,6 @@
 						<input type="number" name="Kd2" placeholder="Kd" class="input" step="0.01">
 
 						<canvas id="transChart" width="320" height="100"></canvas>
-
-						<script type="text/javascript">
-							// Angle chart 
-							var angleError = new TimeSeries();
-							var angleIntegral = new TimeSeries();
-							var angleSetpoint = new TimeSeries();
-
-							// Find the canvas
-							var angleCanvas = document.getElementById('angleChart');
-
-							// Create the chart
-							var angleChart = new SmoothieChart({
-								millisPerPixel:50,
-								grid:{
-									fillStyle:'transparent',
-									verticalSections:10,
-									strokeStyle:'#c9c9c9'
-								},
-
-								tooltip:true
-							});
-
-							angleChart.addTimeSeries(angleSetpoint, { strokeStyle: '#ec1a1a' });
-							angleChart.addTimeSeries(angleError, { strokeStyle: '#01799e' });
-							angleChart.addTimeSeries(angleIntegral, { strokeStyle: '#0e9a27' });
-
-							angleChart.streamTo(angleCanvas, 100);
-
-
-							// Translational chart 
-
-							var transError = new TimeSeries();
-							var transIntegral = new TimeSeries();
-							var transSetpoint = new TimeSeries();
-							
-							var transCanvas = document.getElementById('transChart');
-
-							// Create the chart
-							var transChart = new SmoothieChart({
-								millisPerPixel:50,
-								grid:{
-									fillStyle:'transparent',
-									verticalSections:10,
-									strokeStyle:'#c9c9c9'
-								},
-
-								tooltip:true
-							});
-
-							transChart.addTimeSeries(transSetpoint, { strokeStyle: '#ec1a1a' });
-							transChart.addTimeSeries(transError, { strokeStyle: '#01799e' });
-							transChart.addTimeSeries(transIntegral, { strokeStyle: '#0e9a27' });
-
-							transChart.streamTo(transCanvas, 100);
-
-
-							// Main chart 
-							var angle = new TimeSeries();
-							var leftSpeed = new TimeSeries();
-							var rightSpeed = new TimeSeries();
-
-							// Find the canvas
-							var canvas = document.getElementById('chart');
-
-							// Create the chart
-							var chart = new SmoothieChart({
-								millisPerPixel:50,
-								grid:{
-									fillStyle:'transparent',
-									verticalSections:10,
-									strokeStyle:'#c9c9c9'
-								},
-
-								tooltip:true
-							});
-
-							chart.addTimeSeries(angle, { strokeStyle: '#ec1a1a' });
-							chart.addTimeSeries(leftSpeed, { strokeStyle: '#01799e' });
-							chart.addTimeSeries(rightSpeed, { strokeStyle: '#0e9a27' });
-
-							chart.streamTo(canvas, 100);
-						</script>
-
 						<hr>
 
 						<button id="updateconfig">Update config</button>
@@ -186,10 +96,11 @@
 		</div>
 
 		<script type="text/javascript">
-		
+
+			// 
 			var x = 0;	var y = 0;
 			var offsetX = 0; var offsetY = 0;
-			var Vtrans = 0.0; var Vrot = 0.0;
+			var Vtrans = 0; var Vrot = 0;
 
 			// PID for Angle controller
 			var Kp1 = -3.5, Ki1 = -1.0, Kd1 = -0.5;
@@ -209,111 +120,76 @@
 
 			var ws = new WebSocket("ws://192.168.4.1/datastream");
 
-			function calculateSpeeds(){
-				// Første kvadrant
-				if(x > 0 && y > 0){
-					V = Math.sqrt(x*x + y*y);
-					H = V * (y*y - x*x)/( y*y + x*x );
-				}
-				// Anden kvadrant
-				if(x < 0 && y > 0){
-					H = Math.sqrt(x*x + y*y);
-					V = H * (y*y - x*x)/( y*y + x*x );
-				}
-				// Tredje kvadrant
-				if(x < 0 && y < 0){
-					V = -Math.sqrt(x*x + y*y);
-					H = V * (y*y - x*x)/( y*y + x*x );
-				}
-				// Fjerde kvadrant
-				if(x > 0 && y < 0){
-				 	H = -Math.sqrt(x*x + y*y);
-					V = H * (y*y - x*x)/( y*y + x*x );
-				}
-				if( x == 0 && y > 0){
-					V = Math.sqrt(x*x + y*y)
-					H = V;
-				}
-				if( x == 0 && y < 0){
-					V = -Math.sqrt(x*x + y*y)
-					H = V;
-				}
-				if( y == 0 && x > 0){
-					V = Math.sqrt(x*x + y*y)
-					H = -V;
-				}
-				if( y == 0 && x < 0){
-					H = Math.sqrt(x*x + y*y)
-					V = -H;
-				}
 
-				H = Math.round(H * 100) / 100;
-				V = Math.round(V * 100) / 100;
-
-				document.getElementById('left-value').innerHTML = V;
-				document.getElementById('right-value').innerHTML = H;
-			}
-
+			/* Live streaming the control values each 50ms over WebSocket */
 			setInterval(function() {
 
 				if(ws.readyState == 1){
-					ws.send("<" + Vtrans + ":" + Vrot + ":" + Kp1 + ":" + Ki1 + ":" + Kd1 + ":" + Kp2 + ":" + Ki2 + ":" + Kd2 + ">");
+					ws.send("<control:" + Vtrans + ":" + Vrot + ">");
 				}
 
 			}, 50);
 
 
+			// Function to read current configuration 
+			function readConfig(){
+
+			}
+
+			// Function to send command
+			function sendCommand( command, data = ""){
+				
+			}
+
 			document.getElementById('updateconfig').onclick = function(){
+
+				// Save the settings to variables
 				Kp1 = document.getElementsByName('Kp1')[0].value;
 				Ki1 = document.getElementsByName('Ki1')[0].value;
 				Kd1 = document.getElementsByName('Kd1')[0].value;
 				Kp2 = document.getElementsByName('Kp2')[0].value;
 				Ki2 = document.getElementsByName('Ki2')[0].value;
 				Kd2 = document.getElementsByName('Kd2')[0].value;
+
+				// Send settings over WebSocket
+
+				if(ws.readyState == 1){
+					ws.send("<config:" + Kp1 + ":" + Ki1 + ":" + Kd1 + ":" + Kp2 + ":" + Ki2 + ":" + Kd2 + ">");
+				}
+
 			};
 
-			var manager = nipplejs.create({
+			var joystick = nipplejs.create({
 				zone: document.getElementById('joystick'),
-				catchDistance: 100,
 				color: '#0070ff',
+				mode: 'static',
+        		position: {left: '50%', top: '50%'},
 				size: 200
 			});
 
-			manager.on('added', function (event, nipple) {
-
-				document.getElementById('guide-text').style.display = "none";
-				document.getElementById('left-value').style.display = "block";
-				document.getElementById('right-value').style.display = "block";
-
+			joystick.on('added', function (event, nipple) {
 				offsetX = nipple.position.x;
 				offsetY = nipple.position.y;
+			});
 
-			}).on('removed', function (event, nipple) {
-
-				document.getElementById('guide-text').style.display = "block";
-				document.getElementById('left-value').style.display = "none";
-				document.getElementById('right-value').style.display = "none";
-
-			}).on('move', function (event, nipple) {
-
-				x = nipple.position.x - sX;
+			joystick.on('move', function (event, nipple) {
+				x = nipple.position.x - offsetX;
 				y = -(nipple.position.y - offsetY);
+				Vtrans = 2.0/100 * y;
+				Vrot = 1.0/100 * x;
+			});
 
-				calculateSpeeds();
-
-			}).on('end', function (event, nipple) {
-
-				H = 0;
-				V = 0;
-
+			joystick.on('end', function (event, nipple) {
+				Vtrans = 0;
+				Vrot = 0;
 			});
 			
 			ws.onmessage = function (event) {
 
+				// Parse received JSON string to a JS object
 				telemtry = JSON.parse(event.data);
-				console.log(telemtry);
-
-				
+	
+				// Set the chart
 				angleSetpoint.append(Date.now(), telemtry.angleSetpoint);
 				angleError.append(Date.now(), telemtry.angleError);
 				angleIntegral.append(Date.now(), telemtry.angleIntegral);
@@ -331,20 +207,23 @@
 			};
 
 
+			/* 
+			----------------- Gauge ------------------
+			Gauge meter are made with Gauge.js library
+			and are configured below. 
+			*/
+
 			var opts = {
 				angle: 0, // The span of the gauge arc
 				lineWidth: 0.2, // The line thickness
 				radiusScale: 0.8, // Relative radius
-
 				pointer: {
 					length: 0.6, // // Relative to gauge radius
 					strokeWidth: 0.06, // The thickness
 					color: '#3c3c3c' // Fill color
 				},
-
 				limitMax: false,     // If false, max value increases automatically if value > maxValue
 				limitMin: false,     // If true, the min value of the gauge will be fixed
-
 				highDpiSupport: true,     // High resolution support
 				staticZones: [
 				   {strokeStyle: "#F03E3E", min: -90, max: -60}, // Red from 100 to 130
@@ -366,6 +245,101 @@
 			gauge.set(0); // set actual value
 
 
+			/* 
+			----------------- Charts ------------------
+			Charts are made with SmoothieChart library
+			and are configured below. 
+			*/
+
+			/* --- Inner controller chart --- */
+
+			// Definition of objects to hold realtime data for the chart
+			var angleError = new TimeSeries();
+			var angleIntegral = new TimeSeries();
+			var angleSetpoint = new TimeSeries();
+
+			// Get the element object with the ID angleChart
+			var angleCanvas = document.getElementById('angleChart');
+
+			// Setup the chart settings
+			var angleChart = new SmoothieChart({
+				millisPerPixel:50,
+				grid:{
+					fillStyle:'transparent',
+					verticalSections:10,
+					strokeStyle:'#c9c9c9'
+				},
+				tooltip:true
+			});
+
+			// Assign each of the dataseries to their own graph on the chart, with each their different color
+			angleChart.addTimeSeries(angleSetpoint, { strokeStyle: '#ec1a1a' });
+			angleChart.addTimeSeries(angleError, { strokeStyle: '#01799e' });
+			angleChart.addTimeSeries(angleIntegral, { strokeStyle: '#0e9a27' });
+
+			// Tell the chart object to begin streaming of data to the HTML canvas with a delay of 100ms
+			angleChart.streamTo(angleCanvas, 100);
+
+
+			/* --- Outer controller chart --- */
+
+			// Definition of objects to hold realtime data for the chart
+			var transError = new TimeSeries();
+			var transIntegral = new TimeSeries();
+			var transSetpoint = new TimeSeries();
+			
+			// Get the element object with the ID transChart
+			var transCanvas = document.getElementById('transChart');
+
+			// Setup the chart settings
+			var transChart = new SmoothieChart({
+				millisPerPixel:50,
+				grid:{
+					fillStyle:'transparent',
+					verticalSections:10,
+					strokeStyle:'#c9c9c9'
+				},
+
+				tooltip:true
+			});
+
+			// Assign each of the dataseries to their own graph on the chart, with each their different color
+			transChart.addTimeSeries(transSetpoint, { strokeStyle: '#ec1a1a' });
+			transChart.addTimeSeries(transError, { strokeStyle: '#01799e' });
+			transChart.addTimeSeries(transIntegral, { strokeStyle: '#0e9a27' });
+
+			// Stream the data
+			transChart.streamTo(transCanvas, 100);
+
+
+			/* --- Angle and speed chart --- */
+
+			// Definition of objects to hold realtime data for the chart
+			var angle = new TimeSeries();
+			var leftSpeed = new TimeSeries();
+			var rightSpeed = new TimeSeries();
+
+			// Find the canvas
+			var canvas = document.getElementById('chart');
+
+			// Setup the chart settings
+			var chart = new SmoothieChart({
+				millisPerPixel:50,
+				grid:{
+					fillStyle:'transparent',
+					verticalSections:10,
+					strokeStyle:'#c9c9c9'
+				},
+				tooltip:true
+			});
+
+			// Assign each of the dataseries to their own graph on the chart, with each their different color
+			chart.addTimeSeries(angle, { strokeStyle: '#ec1a1a' });
+			chart.addTimeSeries(leftSpeed, { strokeStyle: '#01799e' });
+			chart.addTimeSeries(rightSpeed, { strokeStyle: '#0e9a27' });
+
+			// Stream the data
+			chart.streamTo(canvas, 100);
 
 		</script>
 

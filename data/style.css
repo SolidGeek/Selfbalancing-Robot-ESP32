@@ -70,7 +70,6 @@ h4{
 .content{
     padding: 0 15px;
     box-sizing: border-box;
-    overflow: auto;
 }
 
 .content::after {
