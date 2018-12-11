@@ -16,9 +16,15 @@ bool MPU6050::begin(){
 	setClockSource( MPU6050_CLOCK_PLL_XGYRO );
 	setRange( MPU6050_RANGE_2G );
 	setScale( MPU6050_SCALE_2000DPS );
+  
+	this->ready = true;
 
 	return true;
 
+}
+
+bool MPU6050::isReady( void ){
+	return this->ready;
 }
 
 void MPU6050::setClockSource( uint8_t source )
@@ -55,6 +61,17 @@ void MPU6050::setScale( uint8_t scale)
     port.write(MPU6050_REG_GYRO_CONFIG, value);
 }
 
+
+void MPU6050::setDLPF( uint8_t setting)
+{
+    uint8_t value;
+
+    value = port.read(MPU6050_REG_CONFIG);
+    value &= 0b11111000;
+    value |= setting;
+
+    port.write(MPU6050_REG_CONFIG, value);
+}
 
 void MPU6050::setSleepEnabled(bool state)
 {
@@ -154,13 +171,13 @@ void MPU6050::getData(){
 
   // Filtering 
 
-  accel.x = EMA( rawAccel.x, accel.x, 0.1);
-  accel.y = EMA( rawAccel.y, accel.y, 0.1);
-  accel.z = EMA( rawAccel.z, accel.z, 0.1);
+  accel.x = LPF( rawAccel.x, accel.x, 0.1);
+  accel.y = LPF( rawAccel.y, accel.y, 0.1);
+  accel.z = LPF( rawAccel.z, accel.z, 0.1);
 
-  gyro.x = EMA( rawGyro.x, gyro.x, 0.1);
-  gyro.y = EMA( rawGyro.y, gyro.y, 0.1);
-  gyro.z = EMA( rawGyro.z, gyro.z, 0.1);
+  gyro.x = LPF( rawGyro.x, gyro.x, 0.1);
+  gyro.y = LPF( rawGyro.y, gyro.y, 0.1);
+  gyro.z = LPF( rawGyro.z, gyro.z, 0.1);
 }
 
 void MPU6050::clearOffsets( void ){
@@ -283,6 +300,9 @@ void MPU6050::loadOffsets( void ){
   this->setGyroOffsetZ( offsets.gz );
 }
 
-int MPU6050::EMA( int newSample, int oldSample, float alpha ){
+int MPU6050::LPF( int newSample, int oldSample, float alpha ){
   return (int)((alpha * (float)newSample) + (1.0-alpha) * (float)oldSample);  
 }
+
+
+

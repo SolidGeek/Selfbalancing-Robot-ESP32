@@ -5,6 +5,7 @@
 #define MPU6050_REG_ACCEL_YOFFS_H 0x08
 #define MPU6050_REG_ACCEL_ZOFFS_H 0x0A
 
+#define MPU6050_REG_CONFIG       0x1A
 #define MPU6050_REG_GYRO_XOFFS_H 0x13
 #define MPU6050_REG_GYRO_YOFFS_H 0x15
 #define MPU6050_REG_GYRO_ZOFFS_H 0x17
@@ -49,6 +50,8 @@ class MPU6050
   	void setScale( uint8_t scale );
   
   	void setClockSource( uint8_t source );
+
+    void setDLPF( uint8_t setting );
   
   	void setSleepEnabled( bool state );
 
@@ -71,12 +74,14 @@ class MPU6050
     void calculateMeans();
     void calibrate();
     void clearOffsets();
-  
-    Vector rawGyro;
-    Vector rawAccel;
+
+    bool isReady();
 
     Vector gyro;
     Vector accel;
+
+    Vector rawGyro;
+    Vector rawAccel;
 
     int16_t ax_offset, ay_offset, az_offset, gx_offset, gy_offset, gz_offset;
     int16_t mean_ax = 0, mean_ay = 0, mean_az = 0, mean_gx = 0, mean_gy = 0, mean_gz = 0;
@@ -89,14 +94,17 @@ class MPU6050
       int16_t gy = 0;
       int16_t gz = 0;
     } offsets;
-  
+    
+    
   private:
   
   	I2C port;
 
-    int EMA( int newSample, int oldSample, float alpha );
-  
+    int LPF( int newSample, int oldSample, float alpha );
+    
     uint8_t buff[14];
+
+    bool ready = false;
 
     
  

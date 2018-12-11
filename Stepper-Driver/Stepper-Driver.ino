@@ -15,7 +15,7 @@ void setup() {
 
   stepper.setMaxVelocity( 2000 ); // Steps/s
   stepper.setMaxAcceleration( 800 ); // Steps/s
-  stepper.setCurrent(65);
+  stepper.setCurrent(50);
   
   stepper.setup();
 }

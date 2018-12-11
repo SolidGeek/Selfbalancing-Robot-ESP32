@@ -1,5 +1,9 @@
 #include "Controller.h"
 
+Controller::Controller( void ){
+	
+}
+
 Controller::Controller( float Kp, float Ki, float Kd){
 
 	this->Kp = Kp;
@@ -34,4 +38,10 @@ float Controller::getOutput(){
 
 	return this->output;
 
+}
+
+void Controller::setConstants( float p, float i, float d ){
+	this->Kp = p;
+	this->Ki = i;
+	this->Kd = d;
 }

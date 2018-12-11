@@ -8,10 +8,6 @@
 #include "MPU6050.h"
 #include "Controller.h"
 
-/* Initiation of WebServer and WebSocket object */
-AsyncWebServer server(80);
-AsyncWebSocket websocket("/datastream");
-
 /* Defining objects for Serial communication with left and right motor driver */
 HardwareSerial LeftSerial(1);
 HardwareSerial RightSerial(2);
@@ -19,18 +15,22 @@ HardwareSerial RightSerial(2);
 /* Initiation of MPU object */
 MPU6050 MPU;
 
-
 /* Very secret login details for the access point */
 const char * ssid = "RoboTender v1";
 const char * password = "12345679";
 
+/* Initiation of WebServer and WebSocket object */
+AsyncWebServer server(80);
+AsyncWebSocket websocket("/datastream");
+
 
 /* Variables for angle estimation */
 const double sensitivity = 16.4;
-const double alfa = 0.98;
+const double alpha = 0.98;
 double currentAngle = 0;        
 double accelAngle = 0.0;
 double gyroAngle = 0.0;
+double gyroRate = 0.0;
 uint32_t timer = 0;
 bool calibrate = false;
 
@@ -58,10 +58,16 @@ const float R = 0.07;                     // Wheel radius 7cm
 const float B = 0.19;                     // Distance between wheels 19cm
 const float CUNICYCLE = B / ( 2.0 * R );  // Wheel turns to achieve one rotation
 
+struct Config{
+	float Kp1, Ki1, Kd1, Kp2, Ki2, Kd2;
+} config; 
+
+uint8_t offsetAddress = 0;
+uint8_t configAddress = 24; // 12 bytes after MPU offsets
 
 /* Setup of PID controllers to hold all necessary variables */
-Controller inner( -3.5, -1.0, -0.5 );
-Controller outer( 0.0, 0.0, 0.0 );
+Controller inner;
+Controller outer;
 
 
 /* Function to handle incoming websocket connection */
@@ -103,11 +109,8 @@ void onWsEvent( AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEvent
 			index = strtok(charArray,":"); 
 			strcpy(command, index);
 
-			if( command == "control" ){
+			if( strcmp(command, "control") == 0 ){
 
-				/* Control signal from remote */
-
-				// Translational speed
 				index = strtok(NULL,":"); 
 				strcpy(tempBuffer, index);
 				transVelocity = atof(tempBuffer);
@@ -119,63 +122,84 @@ void onWsEvent( AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEvent
 
 				// Write back the realtime data through the webSocket
 				client->text( 
-					"{\"angle\":" 			+ String(currentAngle) 	+ ",\"leftSpeed\":" 	+ String(leftVelocity) 	+ ",\"rightSpeed\":" 	+ String(rightVelocity) + 
-					",\"angleSetpoint\":" 	+ String(angleSetpoint) + ",\"angleError\":" 	+ String(inner.error) 	+ ",\"angleIntegral\":" + String(inner.integral) + 
-					",\"transSetpoint\":" 	+ String(transVelocity) + ",\"transError\":" 	+ String(outer.error) 	+ ",\"transIntegral\":" + String(outer.integral) + "}"
+				"{\"type\": \"data\",\"angle\":" 	+ String(currentAngle)  + ",\"leftSpeed\":"   + String(leftVelocity)  + ",\"rightSpeed\":"    + String(rightVelocity) + 
+				",\"angleSetpoint\":" 	        + String(angleSetpoint) + ",\"angleError\":"  + String(inner.error)   + ",\"angleIntegral\":" + String(inner.integral) + 
+				",\"transSetpoint\":" 	        + String(transVelocity) + ",\"transError\":"  + String(outer.error)   + ",\"transIntegral\":" + String(outer.integral) + "}"
 				);
-			}
 
-			else if( command == "config" ){
+			}
+			else if( strcmp(command, "config") == 0 ){
 
 				/* Variables for PID tuning */
-
+ 
 				// Kp for angle controller
 				index = strtok(NULL, ":"); 
 				strcpy(tempBuffer, index);
-				inner.Kp = atof(tempBuffer);
+				config.Kp1 = atof(tempBuffer);
 
 				// Ki for angle controller
 				index = strtok(NULL, ":"); 
 				strcpy(tempBuffer, index);
-				inner.Ki = atof(tempBuffer);
+				config.Ki1 = atof(tempBuffer);
 
 				// Kd for angle controller
 				index = strtok(NULL, ":"); 
 				strcpy(tempBuffer, index);
-				inner.Kd = atof(tempBuffer);
+				config.Kd1 = atof(tempBuffer);
 
 				// Kp for translational controller
 				index = strtok(NULL, ":"); 
 				strcpy(tempBuffer, index);
-				outer.Kp = atof(tempBuffer);
+				config.Kp2 = atof(tempBuffer);
 
 				// Ki for translational controller
 				index = strtok(NULL, ":"); 
 				strcpy(tempBuffer, index);
-				outer.Ki = atof(tempBuffer);
+				config.Ki2 = atof(tempBuffer);
 
 				// Kd for translational controller
 				index = strtok(NULL, ":"); 
 				strcpy(tempBuffer, index);
-				outer.Kd = atof(tempBuffer);
+				config.Kd2 = atof(tempBuffer);
 
+				saveConfig();
+
+				inner.setConstants(config.Kp1, config.Ki1, config.Kd1);
+				outer.setConstants(config.Kp2, config.Ki2, config.Kd2);
 			}
 
-			else if( command == "read" ){
+			else if( strcmp(command, "read") == 0 ){
 				// No data, the command is enough - return the current config
+				Serial.println("App reading config");
+				
+				client->text( 
+				"{\"type\": \"config\",\"Kp1\":" + String(inner.Kp) + ",\"Ki1\":" + String(inner.Ki) + ",\"Kd1\":" + String(inner.Kd) +
+				",\"Kp2\":" + String(outer.Kp) + ",\"Ki2\":" + String(outer.Ki) + ",\"Kd2\":" + String(outer.Kd) + "}"
+				);
 			}
-
-			else if( command == "calibrate" ){
+			
+			else if( strcmp(command, "calibrate") == 0 ){
 
 				// No data, the command is enough - lets calibrate the IMU!
+				if(MPU.isReady()){
+					Serial.println( "Calibrating" );
+			
+					MPU.calibrate();
+					EEPROM.put( offsetAddress, MPU.offsets );
+					EEPROM.commit(); 
+					
+					Serial.println( "Calibration done" );
+				}else{
+					Serial.println( "IMU isn't initialised" );
+				}
 
 			}
-
-			else if( command == "park" ){
+			/*
+			else if( strcmp(command,"park") ){
 
 				// No data, the command is enough - lets park!
 
-			}
+			}*/
 		}
 	}
 }
@@ -194,6 +218,8 @@ void setup(){
 	if(!SPIFFS.begin()){
 		Serial.println("Failed to initialise SPIFFS");
 	}
+
+	loadConfig();
 
 	// Prepare pin built-in LED to be used to signal a client connected
 	pinMode(statusLED, OUTPUT);
@@ -233,26 +259,9 @@ void setup(){
 	// Initiate the MPU connection
 	if(MPU.begin()){
 
-		Serial.println("Ready");
-
-		if( calibrate == true ){
-			
-			// Calibrate the accel and gyro
-			Serial.println( "Calibrating" );
-			
-			MPU.calibrate();
-			EEPROM.put( 0, MPU.offsets );
-			EEPROM.commit(); 
-			
-			Serial.println( "Calibration done" );
-			
-		}else{
-
-			// Get offsets from EEPROM
-			EEPROM.get( 0, MPU.offsets );
-			MPU.loadOffsets();
-				
-		}
+		// Get offsets from EEPROM
+		EEPROM.get( offsetAddress, MPU.offsets );
+		MPU.loadOffsets();
 		
 	}else{
 		Serial.println("Couldn't reach MPU");
@@ -265,32 +274,45 @@ void loop()
 	// Turn on the status LED if a client i connected
 	digitalWrite(statusLED, clientConnected);
 	
-	if(micros() - innerTimer >= 20000)    // 50 Hz
+	if(micros() - innerTimer >= 5000)    // 200 Hz
 	{
 		estimateAngle();
 
 		// Calculate the motor speeds from the current angle and the desired angle (setpoint)
-		angleController( angleSetpoint , rotVelocity, currentAngle);
+		angleController( angleSetpoint, rotVelocity, currentAngle );
 		
 		// Set the calculated motor speeds
 		setSpeeds();
 
+    translationalController( transVelocity, leftVelocity, rightVelocity ); // Set setPoint to 0
+    
 		innerTimer = micros();
 	}
 
-	if(micros() - outerTimer >= 50000) // 20 Hz
+	if(micros() - outerTimer >= 10000) // 100 Hz
 	{
 		// Calculate angle setpoint needed to obtain desired velocity
-		translationalController( transVelocity, leftVelocity, rightVelocity ); // Set setPoint to 0
+		
 		
 	}
 
 	// Check for lost websocket connection / timeout
-	if(millis() - lastPacket > 100)
+	if(millis() - lastPacket > 200)
 	{
 		transVelocity = 0.0;
 		rotVelocity = 0.0;
 	}
+}
+
+void loadConfig(){
+	EEPROM.get( configAddress, config );
+  inner.setConstants(config.Kp1, config.Ki1, config.Kd1);
+  outer.setConstants(config.Kp2, config.Ki2, config.Kd2);
+}
+
+void saveConfig(){
+	EEPROM.put( configAddress, config );
+	EEPROM.commit(); 
 }
 
 void setSpeeds(){
@@ -319,7 +341,7 @@ void translationalController(  float setpoint, float leftVel, float rightVel ){
 	outer.findError( setpoint, velocity );
 
 	// Limit the integral to +/- 0.2 m/s.
-	outer.integral = constrain(outer.integral, -0.2, 0.2);
+	outer.integral = constrain(outer.integral, -0.1, 0.1);
 	
 	// Calculate the nessecary angle setpoint to eliminate any error in translational speed 
 	float output = outer.getOutput(); 
@@ -335,7 +357,7 @@ void angleController( float setpoint, float rotation, float angle){
 	// Calculate error, integral and derivative
 	inner.findError( setpoint, angle );
 
-	// Limit the integral to +/- 1 degree.
+	// Limit the integral to +/- 10 degree.
 	inner.integral = constrain(inner.integral, -1.0, 1.0);
 
 	// Calculate the nessecary motor speed to eliminate any error (go to setpoint)
@@ -345,14 +367,16 @@ void angleController( float setpoint, float rotation, float angle){
 	float rotVelocity = (rotation * CUNICYCLE) * 30/(R * M_PI);
 
 	// Add the output to the current velocity, to make it a change in velocity from the current velocity
-	leftVelocity = (leftVelocity + output) + rotVelocity;
-	rightVelocity = (rightVelocity + output) - rotVelocity;
+	leftVelocity = output + rotVelocity;
+	rightVelocity = output - rotVelocity;
 
 	// Limit the velocity to +/- 200 RPM
 	leftVelocity = constrain(leftVelocity, -200.0, 200.0);
 	rightVelocity = constrain(rightVelocity, -200.0, 200.0);
 
 }
+
+
 
 void estimateAngle(){
 
@@ -367,9 +391,16 @@ void estimateAngle(){
 	accelAngle = calculateAccelAngle( MPU.accel.x, MPU.accel.z );
 
 	// Estimate angle from the integration of angular velocity (gyro value) over time
-	gyroAngle += ( MPU.gyro.y / sensitivity ) * dt;
+	gyroRate = ( MPU.gyro.y / sensitivity );
+	gyroAngle += gyroRate * dt;
+  
+	currentAngle = (alpha) * (currentAngle + gyroRate * dt) + (1.0-alpha) * accelAngle;
 
-	currentAngle = alfa * (currentAngle + (MPU.gyro.y / sensitivity) * dt) + (1.0 - alfa) * accelAngle;
+  /*Serial.print(accelAngle);
+  Serial.print(',');
+  Serial.print(gyroAngle);
+  Serial.print(',');
+  Serial.println(currentAngle);*/
 
 }
 

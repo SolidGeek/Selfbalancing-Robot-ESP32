@@ -4,6 +4,7 @@ class Controller{
 
 public:
 
+	Controller( void );
 	Controller( float Kp, float Ki, float Kd);
 
 	float Kp = 0.0;
@@ -20,5 +21,6 @@ public:
 
 	void findError( float setpoint, float value );
 	float getOutput( void );
+	void setConstants( float p, float i, float d );
 
 };

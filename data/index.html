@@ -32,12 +32,18 @@
 				<div class="container">
 
 					<div class="content">
-						<span id="angle-value"></span>
-						<canvas id="angle"></canvas>
+						<div class="half">
+							<span id="angle-value"></span>
+							<canvas id="angle" class="gauge"></canvas>
+						</div>
 
-						<canvas id="chart" width="320" height="100"></canvas>
+						<div class="half">
+							<span id="speed-value"></span>
+							<canvas id="speed" class="gauge"></canvas>
+						</div>
+					</div>
 
-						<br>
+					<div class="content">
 
 						<div id="joystick">
 						</div>
@@ -46,10 +52,8 @@
 
 					<div class="content">
 
-						<h3></h3>
-
 						<h3>Telemetry</h3>
-						<table>
+						<!--<table>
 							<tr>
 								<th>Angle:</th>
 								<td>0 degress</td>
@@ -62,10 +66,14 @@
 
 							<tr>
 								<th>Weight:</th>
-								<td>0.12 kg</td>
+								<td>0.0 kg</td>
 							</tr>
-						</table>
+						</table>-->
+
+						<canvas id="chart" width="320" height="100"></canvas>
 					</div>
+
+
 				</div>
 			</div>
 			<div id="config">
@@ -97,49 +105,84 @@
 
 		<script type="text/javascript">
 
-			// 
+			// Joystick position and speed
 			var x = 0;	var y = 0;
 			var offsetX = 0; var offsetY = 0;
 			var Vtrans = 0; var Vrot = 0;
 
 			// PID for Angle controller
-			var Kp1 = -3.5, Ki1 = -1.0, Kd1 = -0.5;
-
+			var Kp1, Ki1, Kd1;
 			// PID for Velocity controller
-			var Kp2 = 0.0, Ki2 = 2.0, Kd2 = 0.5;
+			var Kp2, Ki2, Kd2;
 
+			var configRead = false;
 
-			// On page loaded set the values in 
+			var websocket = new WebSocket("ws://192.168.4.1/datastream");
 
-			document.getElementsByName('Kp1')[0].value = Kp1;
-			document.getElementsByName('Ki1')[0].value = Ki1;
-			document.getElementsByName('Kd1')[0].value = Kd1;
-			document.getElementsByName('Kp2')[0].value = Kp2;
-			document.getElementsByName('Ki2')[0].value = Ki2;
-			document.getElementsByName('Kd2')[0].value = Kd2;
+			// Function to send command
+			function sendCommand( command, data = [] ){
 
-			var ws = new WebSocket("ws://192.168.4.1/datastream");
+				var dataString = data.join(':');
 
-
+				if(websocket.readyState == 1){
+					websocket.send("<" + command + ":" + dataString + ">");
+				}
+			}
+	
 			/* Live streaming the control values each 50ms over WebSocket */
 			setInterval(function() {
 
-				if(ws.readyState == 1){
-					ws.send("<control:" + Vtrans + ":" + Vrot + ">");
-				}
+				// Don't wanna stream until config has been read.
+				if(configRead == true){
 
+					sendCommand( "control", [ Vtrans, Vrot ] );
+		
+				}
+			
 			}, 50);
 
+			websocket.onopen = function (event) {
 
-			// Function to read current configuration 
-			function readConfig(){
+				// Request config data by WebSocket
+				sendCommand( "read" );
 
 			}
 
-			// Function to send command
-			function sendCommand( command, data = ""){
-				
-			}
+			websocket.onmessage = function (event) {
+
+				// Parse received JSON string to a JS object
+				telemtry = JSON.parse(event.data);
+	
+				if( telemtry.type == 'data')
+				{
+					// Set the chart
+					angleSetpoint.append(Date.now(), telemtry.angleSetpoint);
+					angleError.append(Date.now(), telemtry.angleError);
+					angleIntegral.append(Date.now(), telemtry.angleIntegral);
+
+					transSetpoint.append(Date.now(), telemtry.transSetpoint);
+					transError.append(Date.now(), telemtry.transError);
+					transIntegral.append(Date.now(), telemtry.transIntegral);
+					
+					angle.append(Date.now(), telemtry.angle);
+					leftSpeed.append(Date.now(), telemtry.leftSpeed);
+					rightSpeed.append(Date.now(), telemtry.rightSpeed);
+
+					angleGauge.set( telemtry.angle );
+					speedGauge.set( Math.abs((telemtry.leftSpeed + telemtry.rightSpeed) / 2) );
+				}
+				else if( telemtry.type == 'config' )
+				{
+					document.getElementsByName('Kp1')[0].value = telemtry.Kp1;
+					document.getElementsByName('Ki1')[0].value = telemtry.Ki1;
+					document.getElementsByName('Kd1')[0].value = telemtry.Kd1;
+					document.getElementsByName('Kp2')[0].value = telemtry.Kp2;
+					document.getElementsByName('Ki2')[0].value = telemtry.Ki2;
+					document.getElementsByName('Kd2')[0].value = telemtry.Kd2;
+
+					configRead = true;
+				}
+			};
 
 			document.getElementById('updateconfig').onclick = function(){
 
@@ -152,12 +195,16 @@
 				Kd2 = document.getElementsByName('Kd2')[0].value;
 
 				// Send settings over WebSocket
-
-				if(ws.readyState == 1){
-					ws.send("<config:" + Kp1 + ":" + Ki1 + ":" + Kd1 + ":" + Kp2 + ":" + Ki2 + ":" + Kd2 + ">");
-				}
+				sendCommand( "config", [Kp1, Ki1, Kd1, Kp2, Ki2, Kd2] );
 
 			};
+
+
+			/* 
+			----------------- Joystick ------------------
+			Joystick are made with nipplejs library
+			and are configured below. 
+			*/
 
 			var joystick = nipplejs.create({
 				zone: document.getElementById('joystick'),
@@ -167,7 +214,7 @@
 				size: 200
 			});
 
-			joystick.on('added', function (event, nipple) {
+			joystick.on('start', function (event, nipple) {
 				offsetX = nipple.position.x;
 				offsetY = nipple.position.y;
 			});
@@ -175,8 +222,14 @@
 			joystick.on('move', function (event, nipple) {
 				x = nipple.position.x - offsetX;
 				y = -(nipple.position.y - offsetY);
-				Vtrans = 2.0/100 * y;
-				Vrot = 1.0/100 * x;
+
+				x = (x / 100) * 0.1;
+				y = (y / 100) * 1.0;
+
+				Vtrans = (Math.round(y * 1000) / 1000);
+				Vrot = (Math.round(x * 1000) / 1000);
+
+				console.log(Vtrans + ":" + Vrot);
 			});
 
 			joystick.on('end', function (event, nipple) {
@@ -184,28 +237,6 @@
 				Vrot = 0;
 			});
 			
-			ws.onmessage = function (event) {
-
-				// Parse received JSON string to a JS object
-				telemtry = JSON.parse(event.data);
-	
-				// Set the chart
-				angleSetpoint.append(Date.now(), telemtry.angleSetpoint);
-				angleError.append(Date.now(), telemtry.angleError);
-				angleIntegral.append(Date.now(), telemtry.angleIntegral);
-
-				transSetpoint.append(Date.now(), telemtry.transSetpoint);
-				transError.append(Date.now(), telemtry.transError);
-				transIntegral.append(Date.now(), telemtry.transIntegral);
-				
-				// gauge.set(telemtry.angle);
-
-				angle.append(Date.now(), telemtry.angle);
-				leftSpeed.append(Date.now(), telemtry.leftSpeed);
-				rightSpeed.append(Date.now(), telemtry.rightSpeed);
-
-			};
-
 
 			/* 
 			----------------- Gauge ------------------
@@ -213,37 +244,55 @@
 			and are configured below. 
 			*/
 
-			var opts = {
+			var angle = document.getElementById('angle');
+			var speed = document.getElementById('speed');
+
+			var angleGauge = new Gauge(angle).setOptions({
+				angle: 0, // The span of the gauge arc
+				lineWidth: 0.2, // The line thickness
+				radiusScale: 0.8, // Relative radius
+				pointer: {
+					length: 0.572, // // Relative to gauge radius
+					strokeWidth: 0.06, // The thickness
+					color: '#000000' // Fill color
+				},
+				maxValue: true,
+				minValue: true,
+				colorStart: '#6FADCF',   // Colors
+				colorStop: '#8FC0DA',    // just experiment with them
+				generateGradient: true,
+				highDpiSupport: true,     // High resolution support
+				staticZones: [ {strokeStyle: "#167dea", min: -90, max: 90}],
+			}); 
+
+			angleGauge.minValue = -90;
+			angleGauge.maxValue = 90;
+			
+			var speedGauge = new Gauge(speed).setOptions({
 				angle: 0, // The span of the gauge arc
 				lineWidth: 0.2, // The line thickness
 				radiusScale: 0.8, // Relative radius
 				pointer: {
 					length: 0.6, // // Relative to gauge radius
 					strokeWidth: 0.06, // The thickness
-					color: '#3c3c3c' // Fill color
+					color: '#000000' // Fill color
 				},
-				limitMax: false,     // If false, max value increases automatically if value > maxValue
-				limitMin: false,     // If true, the min value of the gauge will be fixed
+				maxValue: true,
+				minValue: true,
+				colorStart: '#6FADCF',   // Colors
+				colorStop: '#8FC0DA',    // just experiment with them
+				generateGradient: true,
 				highDpiSupport: true,     // High resolution support
-				staticZones: [
-				   {strokeStyle: "#F03E3E", min: -90, max: -60}, // Red from 100 to 130
-				   {strokeStyle: "#FFDD00", min: -60, max: -30}, // Yellow
-				   {strokeStyle: "#30B32D", min: -30, max: 30}, // Green
-				   {strokeStyle: "#FFDD00", min: 30, max: 60}, // Yellow
-				   {strokeStyle: "#F03E3E", min: 60, max: 90}  // Red
-				],
-			};
+				percentColors: [[0.0, "#a9d70b" ], [0.50, "#f9c802"], [1.0, "#ff0000"]]
+			}); 
 
-			var target = document.getElementById('angle');
-			var gauge = new Gauge(target).setOptions(opts); 
+			speedGauge.minValue = 0;
+			speedGauge.maxValue = 200;
 
-			gauge.setTextField(document.getElementById("angle-value"));
-
-			gauge.maxValue = 90;
-			gauge.minValue = -90; 
-
-			gauge.set(0); // set actual value
-
+			angleGauge.setTextField(document.getElementById("angle-value"));
+			speedGauge.setTextField(document.getElementById("speed-value"));
+			angleGauge.set(0);
+			speedGauge.set(0);
 
 			/* 
 			----------------- Charts ------------------
