@@ -6,6 +6,16 @@ body{
     color: #212225;
 }
 
+button{
+    padding: 8px 20px;
+    font-size: 14px;
+    color: #fafafa;
+    background: #2e3e4c;
+    border-radius: 8px;
+    margin: 8px 0;
+    border: none;
+}
+
 *, ::after, ::before {
     box-sizing: border-box;
 }

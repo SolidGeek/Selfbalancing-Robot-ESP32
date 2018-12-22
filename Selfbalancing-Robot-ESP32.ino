@@ -1,12 +1,19 @@
 /* Include dependencies */
 #include <WiFi.h>
 #include <EEPROM.h>
+#include <Servo.h>
 #include <HardwareSerial.h>
 #include <math.h> 
 #include "SPIFFS.h"
 #include "ESPAsyncWebServer.h"
 #include "MPU6050.h"
 #include "Controller.h"
+
+/* Parking */
+Servo parkingLeg;
+const int servoPin = 13;
+uint8_t parkAngle = 95;
+uint8_t noparkAngle = 5;
 
 /* Defining objects for Serial communication with left and right motor driver */
 HardwareSerial LeftSerial(1);
@@ -68,6 +75,9 @@ uint8_t configAddress = 24; // 12 bytes after MPU offsets
 /* Setup of PID controllers to hold all necessary variables */
 Controller inner;
 Controller outer;
+
+float maxWeight = 0.0;
+unsigned long weightTimer = 0;
 
 
 /* Function to handle incoming websocket connection */
@@ -194,15 +204,23 @@ void onWsEvent( AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEvent
 				}
 
 			}
-			/*
-			else if( strcmp(command,"park") ){
-
+			
+			else if( strcmp(command, "park") == 0 ){
 				// No data, the command is enough - lets park!
+        if(parked == true){
+          parkingLeg.write(noparkAngle);
+        }else{
+          parkingLeg.write(parkAngle);
+        }
 
-			}*/
+        parked = !parked;
+        
+			}
 		}
 	}
 }
+
+bool enableMotors = false;
 
 void setup(){
 
@@ -220,6 +238,8 @@ void setup(){
 	}
 
 	loadConfig();
+
+  parkingLeg.attach(servoPin);
 
 	// Prepare pin built-in LED to be used to signal a client connected
 	pinMode(statusLED, OUTPUT);
@@ -278,22 +298,36 @@ void loop()
 	{
 		estimateAngle();
 
+    if( (currentAngle < -25.0 || currentAngle > 25.0) || parked == true){
+      enableMotors = false;  
+    }else{
+      enableMotors = true;  
+    }
+
 		// Calculate the motor speeds from the current angle and the desired angle (setpoint)
 		angleController( angleSetpoint, rotVelocity, currentAngle );
-		
-		// Set the calculated motor speeds
-		setSpeeds();
 
+    if(enableMotors == true){
+  		// Set the calculated motor speeds
+  		setSpeeds();
+    }
+    
     translationalController( transVelocity, leftVelocity, rightVelocity ); // Set setPoint to 0
     
 		innerTimer = micros();
 	}
 
-	if(micros() - outerTimer >= 10000) // 100 Hz
+	if(micros() - outerTimer >= 50000) // 100 Hz
 	{
 		// Calculate angle setpoint needed to obtain desired velocity
 		
-		
+		// calculatePayloadWeight();
+    
+    /*Serial.print(maxWeight);
+    Serial.print(';');
+    Serial.println(currentAngle);*/
+
+    // outerTimer = micros();
 	}
 
 	// Check for lost websocket connection / timeout
@@ -302,6 +336,11 @@ void loop()
 		transVelocity = 0.0;
 		rotVelocity = 0.0;
 	}
+
+  // Unpark 3 seconds after turnonn
+  if(millis() > 3000 && millis() < 5000 ){
+    parkingLeg.write(noparkAngle);
+  }
 }
 
 void loadConfig(){
@@ -418,4 +457,35 @@ double calculateAccelAngle( int ax, int az ){
 	// Calculate argtan and convert to degress by multipliing by 57.296 (180/pi)
 	return atan( - (double)ax / (double)az ) * 57.2957795;
 	
+}
+
+void calculatePayloadWeight(){
+
+  float fsrVoltage = 0.0;
+  float tempVoltage = 0.0;
+  float weight = 0.0;
+  
+  for(uint8_t i = 0; i < 10; i++){
+    tempVoltage += ((float)analogRead(35) / 4096.0) * 3.30;
+    delayMicroseconds(50);
+  }
+
+  fsrVoltage = tempVoltage / 10.0;
+
+  // Serial.println(fsrVoltage);
+
+  if( fsrVoltage == 0.0){
+    maxWeight = 0.0;
+  }else{
+    weight = fsrVoltage * 625.0;
+
+    if( micros() - weightTimer > 10000){
+      maxWeight = weight;  
+    }
+  
+    if(weight > maxWeight){
+      maxWeight = weight;
+      weightTimer = micros();  
+    }
+  }
 }

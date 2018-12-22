@@ -71,6 +71,9 @@
 						</table>-->
 
 						<canvas id="chart" width="320" height="100"></canvas>
+
+						<br>
+						<br>
 					</div>
 
 
@@ -96,7 +99,7 @@
 						<canvas id="transChart" width="320" height="100"></canvas>
 						<hr>
 
-						<button id="updateconfig">Update config</button>
+						<button id="park">Park</button> <button id="updateconfig">Update config</button> 
 					</div>
 				</div>
 
@@ -198,6 +201,12 @@
 				sendCommand( "config", [Kp1, Ki1, Kd1, Kp2, Ki2, Kd2] );
 
 			};
+
+			document.getElementById('park').onclick = function(){
+
+				sendCommand( "park" );
+
+			}
 
 
 			/* 
