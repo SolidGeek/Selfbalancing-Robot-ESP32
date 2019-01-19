@@ -36,6 +36,103 @@ h4{
     margin-bottom: 5px;
 }
 
+input.vertical {
+    transform: rotate(-90deg);
+    transform-origin: center;
+}
+
+input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    position: relative;
+    top: -10px;
+    touch-action: none;
+}
+
+input[type=range]:focus {
+    outline: none;
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 14px;
+    cursor: pointer;
+    background: #dcdcdc;
+    border-radius: 25px;
+    border: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    border: 5px solid #232323;
+    height: 40px;
+    width: 40px;
+    border-radius: 100px;
+    background: #323232;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -13px;
+}
+
+input[type=range]:focus::-webkit-slider-runnable-track {
+    background: #dfdfdf;
+}
+
+input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 14px;
+    cursor: pointer;
+    background: #dcdcdc;
+    border-radius: 25px;
+    border: none;
+}
+
+input[type=range]::-moz-range-thumb {
+    border: 5px solid #232323;
+    height: 40px;
+    width: 40px;
+    border-radius: 100px;
+    background: #323232;
+    cursor: pointer;
+}
+
+input[type=range]::-ms-track {
+    width: 100%;
+    height: 14px;
+    cursor: pointer;
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+}
+
+input[type=range]::-ms-fill-lower {
+    background: #d9d9d9;
+    border-radius: 50px;
+}
+
+input[type=range]::-ms-fill-upper {
+    background: #dcdcdc;
+    border-radius: 50px;
+}
+
+input[type=range]::-ms-thumb {
+    border: 5px solid #232323;
+    height: 40px;
+    width: 40px;
+    border-radius: 100px;
+    background: #323232;
+    cursor: pointer;
+    height: 14px;
+}
+
+input[type=range]:focus::-ms-fill-lower {
+    background: #dcdcdc;
+}
+
+input[type=range]:focus::-ms-fill-upper {
+    background: #dfdfdf;
+}
+
+
 #app{
     background-color: #fff;
     box-shadow: 0px 6px 10px -4px rgba(0, 0, 0, 0.4);
@@ -46,6 +143,8 @@ h4{
     float: left;
     position: relative;
 }
+
+
 
 canvas.gauge {
     width: 100% !important;
@@ -93,6 +192,7 @@ canvas.gauge {
 .content{
     padding: 0 15px;
     box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .content::after {
@@ -126,21 +226,44 @@ canvas.gauge {
     display: block;
 }
 
-#joystick{
-    width: 100%; 
-    height: 280px; 
-    background-color: #ddd; 
-    border-radius: 5px;
-    margin: 0 auto;
-    position: relative;
-    text-align: center;
+.clearfix:after {
+  content: "";
+  display: table;
+  clear: both;
 }
 
-#joystick span{
+#joystick{
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+    border: 3px solid #dcdcdc;
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    margin: 0 auto;
+}
+
+#joystick .value{
+    width: 100%;
     display: block;
-    padding-top: 135px;
-    color: #a5a5a5;
-    cursor: pointer;
+    padding-right: 12px;
+    font-size: 14px;
+    padding-bottom: 8px;
+}
+
+
+#joystick .value span{
+    color: #9a9a9a;
+}
+
+
+.half.vertical {
+    padding: 30% 0;
+    height: 0px;
+}
+
+.text-center{
+    text-align: center;
 }
 
 #left-value{

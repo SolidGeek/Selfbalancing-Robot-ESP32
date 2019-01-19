@@ -12,32 +12,41 @@ Controller::Controller( float Kp, float Ki, float Kd){
 
 }
 
-void Controller::findError( float setpoint, float value ){
+void Controller::compute(float setpoint, float input, float deltaTime ){
+  
+  error = setpoint - input; 
 
-	// Calculate dt in seconds since last loop
+  // Add this cycle's integral to the integral cumulation
+  integral += error * deltaTime; 
 
-	double dt = (double)(micros() - this->timer) / 1000000.0; 
-	this->timer = micros();
+  // Calculate the slope with the data from the current and last cycle
+  derivative = (error - lastError);
 
-	// Calculating PID values
+  // Prevent the integral cumulation from becoming overwhelmingly huge
+  if(integral > maxIntegral) integral = maxIntegral;
+  if(integral < -maxIntegral) integral = -maxIntegral;
 
-	this->error = setpoint - value; 
-	this->integral += this->error * dt; 
-	this->derivative = (this->error - this->previousError)/dt;
+  // Calculate the controller output based on the data and PID gains
+  output = (error * Kp) + (integral * Ki) + (derivative * Kd);
 
-	// Save this error as previousError
+  if(output > maxOutput) output = maxOutput;
+  if(output < -maxOutput) output = -maxOutput;
 
-	this->previousError = error;
 
+  
+  lastError = error;
+  
+}
+
+void Controller::reset(){
+  error = 0.0;
+  derivative = 0.0;
+  integral = 0.0;
+  output = 0.0;
 }
 
 float Controller::getOutput(){
-
-	// Calculate output from PID constants and values
-	this->output = (this->error * Kp) + (this->integral * Ki) + (this->derivative * Kd);
-
 	return this->output;
-
 }
 
 void Controller::setConstants( float p, float i, float d ){

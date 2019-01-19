@@ -1,4 +1,4 @@
-#include <uStepperS.h>
+ #include <uStepperS.h>
 
 uStepperS stepper; 
 
@@ -14,16 +14,21 @@ void setup() {
   Serial1.begin(115200, SERIAL_8N1);
 
   stepper.setMaxVelocity( 2000 ); // Steps/s
-  stepper.setMaxAcceleration( 800 ); // Steps/s
-  stepper.setCurrent(50);
+  stepper.setMaxAcceleration( 500 ); // Steps/s
+  stepper.setCurrent(60);
+  stepper.setHoldCurrent(0); // Free-wheeling at RPM = 0
   
   stepper.setup();
 }
+
+uint32_t testTimer = 0;
 
 void loop() {
 
   if( Serial1.available() ){
 
+    testTimer = micros();
+  
     char c = Serial1.read();
 
     if( c == '\n' ){
@@ -49,7 +54,6 @@ void loop() {
   
   if(newSpeed){
 
-    // Serial.println( perSpeed );
     stepper.setRPM( perSpeed  );
     
     newSpeed = false;  

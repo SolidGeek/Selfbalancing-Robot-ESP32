@@ -7,7 +7,7 @@
 		<title>RoboTender v1.0</title>
 
 		<link rel="stylesheet" type="text/css" href="style.css">
-		<script src='nipplejs.min.js'></script>
+
 		<script src='gauge.min.js'></script>
 		<script src='smoothie.min.js'></script>
 	</head>
@@ -44,8 +44,25 @@
 					</div>
 
 					<div class="content">
+						<div id="joystick" class="clearfix">
+							<div class="half vertical">
+								<input id="rangeTrans" class="vertical" type="range" min="-1"  max="1" step="0.01" value="0">
+								
+							</div>
 
-						<div id="joystick">
+							<div class="half vertical">
+								<input id="rangeRot" type="range" min="-1"  max="1" step="0.01" value="0">
+								
+							</div>
+
+							<div>
+								<div class="half text-center">
+									<div class="value"><span id="transValue"></span> m/s</div>
+								</div>
+								<div class="half text-center">
+									<div class="value"><span id="rotValue"></span> m/s</div>
+								</div>
+							</div>
 						</div>
 						
 					</div>
@@ -108,11 +125,6 @@
 
 		<script type="text/javascript">
 
-			// Joystick position and speed
-			var x = 0;	var y = 0;
-			var offsetX = 0; var offsetY = 0;
-			var Vtrans = 0; var Vrot = 0;
-
 			// PID for Angle controller
 			var Kp1, Ki1, Kd1;
 			// PID for Velocity controller
@@ -123,8 +135,8 @@
 			var websocket = new WebSocket("ws://192.168.4.1/datastream");
 
 			// Function to send command
-			function sendCommand( command, data = [] ){
-
+			function sendCommand( command, data = [] )
+			{
 				var dataString = data.join(':');
 
 				if(websocket.readyState == 1){
@@ -133,26 +145,23 @@
 			}
 	
 			/* Live streaming the control values each 50ms over WebSocket */
-			setInterval(function() {
-
+			setInterval(function()
+			{
+				console.log(Vrot);
 				// Don't wanna stream until config has been read.
 				if(configRead == true){
-
 					sendCommand( "control", [ Vtrans, Vrot ] );
-		
 				}
-			
 			}, 50);
 
-			websocket.onopen = function (event) {
-
+			websocket.onopen = function (event)
+			{
 				// Request config data by WebSocket
 				sendCommand( "read" );
-
 			}
 
-			websocket.onmessage = function (event) {
-
+			websocket.onmessage = function (event)
+			{
 				// Parse received JSON string to a JS object
 				telemtry = JSON.parse(event.data);
 	
@@ -162,10 +171,12 @@
 					angleSetpoint.append(Date.now(), telemtry.angleSetpoint);
 					angleError.append(Date.now(), telemtry.angleError);
 					angleIntegral.append(Date.now(), telemtry.angleIntegral);
+					angleDerivative.append(Date.now(), telemtry.angleDerivative);
 
 					transSetpoint.append(Date.now(), telemtry.transSetpoint);
 					transError.append(Date.now(), telemtry.transError);
 					transIntegral.append(Date.now(), telemtry.transIntegral);
+					transDerivative.append(Date.now(), telemtry.transDerivative);
 					
 					angle.append(Date.now(), telemtry.angle);
 					leftSpeed.append(Date.now(), telemtry.leftSpeed);
@@ -187,8 +198,8 @@
 				}
 			};
 
-			document.getElementById('updateconfig').onclick = function(){
-
+			document.getElementById('updateconfig').onclick = function()
+			{
 				// Save the settings to variables
 				Kp1 = document.getElementsByName('Kp1')[0].value;
 				Ki1 = document.getElementsByName('Ki1')[0].value;
@@ -199,53 +210,84 @@
 
 				// Send settings over WebSocket
 				sendCommand( "config", [Kp1, Ki1, Kd1, Kp2, Ki2, Kd2] );
-
 			};
 
-			document.getElementById('park').onclick = function(){
-
+			document.getElementById('park').onclick = function()
+			{
 				sendCommand( "park" );
-
 			}
 
 
 			/* 
 			----------------- Joystick ------------------
-			Joystick are made with nipplejs library
-			and are configured below. 
+			The joysticks are made using native range inputs, 
+			styled with CSS and controlled with JavaScript
 			*/
 
-			var joystick = nipplejs.create({
-				zone: document.getElementById('joystick'),
-				color: '#0070ff',
-				mode: 'static',
-        		position: {left: '50%', top: '50%'},
-				size: 200
-			});
+			var Vtrans = 0.0; var Vrot = 0.0;
+			var transMax = 0.3; var rotMax = 0.2; // m/s
 
-			joystick.on('start', function (event, nipple) {
-				offsetX = nipple.position.x;
-				offsetY = nipple.position.y;
-			});
+			var transMultiplier = 0.0;
+			var rotMultiplier = 0.0;
 
-			joystick.on('move', function (event, nipple) {
-				x = nipple.position.x - offsetX;
-				y = -(nipple.position.y - offsetY);
+			var setpointTrans = 0.0;
+			var setpointRot = 0.0;
 
-				x = (x / 100) * 0.1;
-				y = (y / 100) * 1.0;
+			var rangeTrans = document.getElementById('rangeTrans');
+			var rangeRot = document.getElementById('rangeRot');
 
-				Vtrans = (Math.round(y * 1000) / 1000);
-				Vrot = (Math.round(x * 1000) / 1000);
+			rangeTrans.addEventListener('mouseup', resetTransRange);
+			rangeTrans.addEventListener('touchend', resetTransRange);
 
-				console.log(Vtrans + ":" + Vrot);
-			});
+			function resetTransRange() {
+				rangeTrans.value = 0.0;
+			}
 
-			joystick.on('end', function (event, nipple) {
-				Vtrans = 0;
-				Vrot = 0;
-			});
-			
+			rangeRot.addEventListener('mouseup', resetRotRange);
+			rangeRot.addEventListener('touchend', resetRotRange);
+
+			function resetRotRange() {
+				rangeRot.value = 0.0;
+			}
+
+			function accelerateTowards( setpoint, current, accel ){
+
+				if (setpoint - accel/2 < current && current < setpoint + accel/2) {
+					return current;
+				}
+
+				if(setpoint > 0 && current < setpoint)
+					current += accel;
+				else if(setpoint < 0 && current > setpoint)
+					current -= accel;
+				else{
+					if(current > accel)
+						current -= accel;
+				    else if(current < -accel)
+				        current += accel;
+				    else
+				        current = 0;
+				}
+
+				return current;
+			}
+
+			setInterval(function() {
+
+				setpointTrans = parseFloat(rangeTrans.value);
+				setpointRot = parseFloat(rangeRot.value);
+
+				transMultiplier = accelerateTowards(setpointTrans, transMultiplier, 0.010);
+				rotMultiplier = accelerateTowards(setpointRot, rotMultiplier, 0.010);
+				
+
+				Vtrans = (transMultiplier * transMax).toFixed(2);
+				Vrot = (rotMultiplier * rotMax).toFixed(2);
+
+				document.getElementById('transValue').innerHTML = Vtrans;
+				document.getElementById('rotValue').innerHTML = Vrot;
+
+			}, 6);
 
 			/* 
 			----------------- Gauge ------------------
@@ -296,7 +338,7 @@
 			}); 
 
 			speedGauge.minValue = 0;
-			speedGauge.maxValue = 200;
+			speedGauge.maxValue = 300;
 
 			angleGauge.setTextField(document.getElementById("angle-value"));
 			speedGauge.setTextField(document.getElementById("speed-value"));
@@ -314,6 +356,7 @@
 			// Definition of objects to hold realtime data for the chart
 			var angleError = new TimeSeries();
 			var angleIntegral = new TimeSeries();
+			var angleDerivative = new TimeSeries();
 			var angleSetpoint = new TimeSeries();
 
 			// Get the element object with the ID angleChart
@@ -334,6 +377,7 @@
 			angleChart.addTimeSeries(angleSetpoint, { strokeStyle: '#ec1a1a' });
 			angleChart.addTimeSeries(angleError, { strokeStyle: '#01799e' });
 			angleChart.addTimeSeries(angleIntegral, { strokeStyle: '#0e9a27' });
+			angleChart.addTimeSeries(angleDerivative, {strokeStyle: '#dac110'});
 
 			// Tell the chart object to begin streaming of data to the HTML canvas with a delay of 100ms
 			angleChart.streamTo(angleCanvas, 100);
@@ -344,6 +388,7 @@
 			// Definition of objects to hold realtime data for the chart
 			var transError = new TimeSeries();
 			var transIntegral = new TimeSeries();
+			var transDerivative = new TimeSeries();
 			var transSetpoint = new TimeSeries();
 			
 			// Get the element object with the ID transChart
@@ -365,6 +410,7 @@
 			transChart.addTimeSeries(transSetpoint, { strokeStyle: '#ec1a1a' });
 			transChart.addTimeSeries(transError, { strokeStyle: '#01799e' });
 			transChart.addTimeSeries(transIntegral, { strokeStyle: '#0e9a27' });
+			transChart.addTimeSeries(transDerivative, {strokeStyle: '#dac110'});
 
 			// Stream the data
 			transChart.streamTo(transCanvas, 100);

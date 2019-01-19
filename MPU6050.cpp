@@ -13,9 +13,10 @@ bool MPU6050::begin(){
 	}
 
 	setSleepEnabled( false ); // Turn of sleep mode before any other registers is configured!!!
-	setClockSource( MPU6050_CLOCK_PLL_XGYRO );
-	setRange( MPU6050_RANGE_2G );
-	setScale( MPU6050_SCALE_2000DPS );
+	// setClockSource( MPU6050_CLOCK_PLL_XGYRO );
+	setAccelRange( MPU6050_RANGE_4G );
+	setGyroRange( MPU6050_SCALE_250DPS );
+  setDLPF(4); // Enable the digital low pass filter on all the raw outputs
   
 	this->ready = true;
 
@@ -39,7 +40,7 @@ void MPU6050::setClockSource( uint8_t source )
     port.write(MPU6050_REG_PWR_MGMT_1, value);
 }
 
-void MPU6050::setRange( uint8_t range )
+void MPU6050::setAccelRange( uint8_t range )
 {
     uint8_t value;
 
@@ -50,7 +51,7 @@ void MPU6050::setRange( uint8_t range )
     port.write(MPU6050_REG_ACCEL_CONFIG, value);
 }
 
-void MPU6050::setScale( uint8_t scale)
+void MPU6050::setGyroRange( uint8_t scale)
 {
     uint8_t value;
 
@@ -169,15 +170,6 @@ void MPU6050::getData(){
   rawGyro.y = (int16_t)((buff[10] << 8) | buff[11]);  // Y
   rawGyro.z = (int16_t)((buff[12] << 8) | buff[13]);; // Z
 
-  // Filtering 
-
-  accel.x = LPF( rawAccel.x, accel.x, 0.1);
-  accel.y = LPF( rawAccel.y, accel.y, 0.1);
-  accel.z = LPF( rawAccel.z, accel.z, 0.1);
-
-  gyro.x = LPF( rawGyro.x, gyro.x, 0.1);
-  gyro.y = LPF( rawGyro.y, gyro.y, 0.1);
-  gyro.z = LPF( rawGyro.z, gyro.z, 0.1);
 }
 
 void MPU6050::clearOffsets( void ){
@@ -298,10 +290,6 @@ void MPU6050::loadOffsets( void ){
   this->setGyroOffsetX( offsets.gx );
   this->setGyroOffsetY( offsets.gy );
   this->setGyroOffsetZ( offsets.gz );
-}
-
-int MPU6050::LPF( int newSample, int oldSample, float alpha ){
-  return (int)((alpha * (float)newSample) + (1.0-alpha) * (float)oldSample);  
 }
 
 

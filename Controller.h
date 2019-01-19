@@ -15,12 +15,18 @@ public:
 	float output = 0.0;
 	float integral = 0.0;
 	float derivative = 0.0;
-	float previousError = 0.0;
+	float lastError = 0.0;
 
-	int32_t timer = 0;
+  float maxOutput= 0.0;
 
-	void findError( float setpoint, float value );
+  /* Used for integral windup */
+  float maxIntegral = 0.0;
+
+	uint32_t lastTime = 0;
+
+	void compute( float setpoint, float value, float deltaTime);
 	float getOutput( void );
 	void setConstants( float p, float i, float d );
+  void reset( void );
 
 };

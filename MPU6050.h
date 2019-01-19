@@ -45,9 +45,9 @@ class MPU6050
   
   	bool begin();
   
-  	void setRange( uint8_t range );
+  	void setAccelRange( uint8_t range );
   
-  	void setScale( uint8_t scale );
+  	void setGyroRange( uint8_t scale );
   
   	void setClockSource( uint8_t source );
 
@@ -76,9 +76,6 @@ class MPU6050
     void clearOffsets();
 
     bool isReady();
-
-    Vector gyro;
-    Vector accel;
 
     Vector rawGyro;
     Vector rawAccel;
