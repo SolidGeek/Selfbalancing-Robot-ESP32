@@ -12,7 +12,7 @@
 /* Parking */
 Servo parkingLeg;
 const int servoPin = 13;
-uint8_t parkAngle = 98;
+uint8_t parkAngle = 100;
 uint8_t noparkAngle = 6;
 
 /* Defining objects for Serial communication with left and right motor driver */
@@ -46,6 +46,8 @@ float centerOfmassOffset = 1.0; // Angle offset to balance the robot
 
 /* Control variables */
 bool parked = false;
+uint32_t parkTimer = 0;
+float parkSpeed = 0.0;
 uint8_t statusLED = 2;
 uint32_t innerTimer = 0;
 uint32_t outerTimer = 0;
@@ -80,6 +82,9 @@ Controller outer;
 float maxWeight = 0.0;
 unsigned long weightTimer = 0;
 
+bool control = false;
+long timeout = 0;
+float deltaTime = 0;
 
 /* Function to handle incoming websocket connection */
 void onWsEvent( AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len ){
@@ -143,7 +148,7 @@ void onWsEvent( AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEvent
 			else if( strcmp(command, "config") == 0 ){
 
 				/* Variables for PID tuning */
- 
+        
 				// Kp for angle controller
 				index = strtok(NULL, ":"); 
 				strcpy(tempBuffer, index);
@@ -209,20 +214,19 @@ void onWsEvent( AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEvent
 			
 			else if( strcmp(command, "park") == 0 ){
 				// No data, the command is enough - lets park!
-        if(parked == true){
-          parkingLeg.write(noparkAngle);
-        }else{
+
+        if(parked == false){
+          parkTimer = millis(); 
           parkingLeg.write(parkAngle);
         }
-
-        parked = !parked;
         
+        parked = !parked;
 			}
 		}
 	}
 }
 
-bool control = false;
+
 
 void setup(){
 	// Prepare Serial communication for debugging
@@ -281,6 +285,10 @@ void setup(){
 	// Initiate the MPU connection
 	if(MPU.begin()){
 
+    /* MPU.calibrate();
+    EEPROM.put( offsetAddress, MPU.offsets );
+    EEPROM.commit(); */
+     
 		// Get offsets from EEPROM
 		EEPROM.get( offsetAddress, MPU.offsets );
 		MPU.loadOffsets();
@@ -296,8 +304,7 @@ void setup(){
  
 }
 
-long timeout = 0;
-float deltaTime = 0;
+
 
 void loop()
 {
@@ -306,7 +313,7 @@ void loop()
  
 	if(micros() - innerTimer >= 4000)    // 250 Hz
   {
-
+    Serial.println(micros() - innerTimer);
     // Calculate delta time in seconds (dividing by 10e6)
     deltaTime = (float)(micros() - timer) / 1000000.0; 
     timer = micros();
@@ -321,19 +328,29 @@ void loop()
   
   }
 
-  if( abs(accelAngle) < 5.0 && control == false && parked == false){
-
+  if( abs(accelAngle) < 5.0 && control == false && parked == false)
+  {
     // Initialize the current angle to the current accelAngle
     currentAngle = accelAngle;
     control = true;
     inner.reset();
     outer.reset();
-
     parkingLeg.write(noparkAngle);
-
   }
 
-  if( abs(currentAngle) > 30.0){
+  if(control == true && parked == true){
+    if(millis() > parkTimer + 500){
+      parkSpeed = -0.1;
+    }
+    
+    if(millis() > parkTimer + 700){
+      control = false;
+      parkSpeed = 0.0;
+    }
+  }
+
+  if( abs(currentAngle) > 30.0)
+  {
     control = false;  
   }
 
@@ -355,13 +372,19 @@ void controller(){
      sampleTimer = micros();
   }*/
     
-    // Calculate the motor speeds from the current angle and the desired angle (setpoint)
-    angleController( angleSetpoint + centerOfmassOffset, rotVelocity, currentAngle );
-
-    // Calculate the anglesetpoint from the current and target velocity
-    translationalController( transVelocity, leftVelocity, rightVelocity );
+    
       
     if(control == true){
+      // Calculate the motor speeds from the current angle and the desired angle (setpoint)
+      angleController( angleSetpoint + centerOfmassOffset, rotVelocity, currentAngle );
+  
+      if(parkSpeed != 0.0){
+        transVelocity = parkSpeed;  
+      }
+  
+      // Calculate the anglesetpoint from the current and target velocity
+      translationalController( transVelocity, leftVelocity, rightVelocity );
+      
       // Set the calculated motor speeds
       setSpeeds(leftVelocity, rightVelocity, false);
     }else{
@@ -524,4 +547,3 @@ void saveConfig(){
 float EMA( float newSample, float oldSample, float alpha ){
   return ((alpha * newSample) + (1.0-alpha) * oldSample);  
 }
-

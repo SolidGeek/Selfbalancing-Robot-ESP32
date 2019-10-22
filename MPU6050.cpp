@@ -243,13 +243,13 @@ void MPU6050::calibrate( void ){
 		this->setGyroOffsetY( gy_offset );
 		this->setGyroOffsetZ( gz_offset );
 
-		/* Serial.println( "ax:" + (String)ax_offset );
+		Serial.println( "ax:" + (String)ax_offset );
 		Serial.println( "aY:" + (String)ay_offset );
 		Serial.println( "aZ:" + (String)az_offset );
 
 		Serial.println( "gX:" + (String)gx_offset );
 		Serial.println( "gY:" + (String)gy_offset );
-		Serial.println( "gZ:" + (String)gz_offset );*/
+		Serial.println( "gZ:" + (String)gz_offset );
 
 		this->calculateMeans();
 
@@ -291,6 +291,3 @@ void MPU6050::loadOffsets( void ){
   this->setGyroOffsetY( offsets.gy );
   this->setGyroOffsetZ( offsets.gz );
 }
-
-
-
