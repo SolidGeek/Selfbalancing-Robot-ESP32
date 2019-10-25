@@ -116,7 +116,7 @@
 						<canvas id="transChart" width="320" height="100"></canvas>
 						<hr>
 
-						<button id="park">Park</button> <button id="updateconfig">Update config</button> <!-- <button id="calibrate">Calibrate</button> -->
+						<button id="park">Park</button> <button id="updateconfig">Update config</button> <button id="calibrate">Calibrate</button>
 					</div>
 				</div>
 
@@ -213,10 +213,10 @@
 				sendCommand( "config", [Kp1, Ki1, Kd1, Kp2, Ki2, Kd2] );
 			};
 
-			/* document.getElementById('calibrate').onclick = function()
+			document.getElementById('calibrate').onclick = function()
 			{
 				sendCommand( "calibrate" );
-			} */
+			}
 
 			document.getElementById('park').onclick = function()
 			{

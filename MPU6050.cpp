@@ -219,6 +219,9 @@ void MPU6050::calibrate( void ){
 	int accel_deadzone 	= 8;
 	int gyro_deadzone 	= 1;
 
+  this->setAccelRange( MPU6050_RANGE_2G );
+  this->setGyroRange( MPU6050_SCALE_250DPS );
+
 	this->clearOffsets();	
 
 	this->calculateMeans();

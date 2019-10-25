@@ -313,7 +313,7 @@ void loop()
  
 	if(micros() - innerTimer >= 4000)    // 250 Hz
   {
-    Serial.println(micros() - innerTimer);
+    // Serial.println(micros() - innerTimer);
     // Calculate delta time in seconds (dividing by 10e6)
     deltaTime = (float)(micros() - timer) / 1000000.0; 
     timer = micros();
@@ -473,7 +473,7 @@ void estimateAngle( float dt ){
   
 	currentAngle = (alpha) * (currentAngle + gyroRate * dt) + (1.0-alpha) * accelAngle;
 
-  // Serial.println(currentAngle);
+  // Serial.println(  String(MPU.rawAccel.x) + "," + String(MPU.rawAccel.z) );
 
   /*uint32_t timerNow = micros();
   Serial.print(accelAngle);

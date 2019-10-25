@@ -1,0 +1,3 @@
+[1023/163112:ERROR:tcp_socket_win.cc(335)] bind() returned an error: Normalt må en socket-adresse (protokol/netværksadresse/port) kun bruges én gang. (0x2740)
+[1023/163112:ERROR:devtools_http_handler.cc(229)] Cannot start http server for devtools. Stop devtools.
+[1023/163424:WARNING:dns_config_service_win.cc(665)] Failed to read DnsConfig.
